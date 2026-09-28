@@ -1,0 +1,1148 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Informe de excedente fiscal y tolerancia superficial para CEP en CABA: compara el DXF de relevamiento con el título y el certificado de AGIP.">
+<title>Excedente y Tolerancia CEP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#fbf5f2; --surface:#ffffff; --surface-2:#fff7f3; --ink:#2a1d18; --muted:#7a625a; --line:#f3d9cc;
+  --accent:#e73d1e; --accent-ink:#ffffff; --accent-soft:#fdf0ea; --rule:#fec807;
+  --grad:linear-gradient(100deg,#e8421e 0%,#f79214 55%,#fec807 100%);
+  --ok:#1a7a34; --ok-soft:#eaf8ed; --warn:#9a5a00; --warn-soft:#fff4d6; --bad:#a4161a; --bad-soft:#fde6e4;
+  --f-display:"Lato", "Helvetica Neue", Arial, sans-serif;
+  --f-body:"Lato", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#17110f; --surface:#211916; --surface-2:#2a201c; --ink:#f4ebe7; --muted:#b9a39a; --line:#3f2e27;
+    --accent:#ff6b47; --accent-ink:#1a0f0b; --accent-soft:#3a1f17; --rule:#d9a800;
+    --ok:#62d08a; --ok-soft:#15301f; --warn:#f5c04a; --warn-soft:#3a2c10; --bad:#ff8080; --bad-soft:#3d1818;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#17110f; --surface:#211916; --surface-2:#2a201c; --ink:#f4ebe7; --muted:#b9a39a; --line:#3f2e27;
+  --accent:#ff6b47; --accent-ink:#1a0f0b; --accent-soft:#3a1f17; --rule:#d9a800;
+  --ok:#62d08a; --ok-soft:#15301f; --warn:#f5c04a; --warn-soft:#3a2c10; --bad:#ff8080; --bad-soft:#3d1818;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg); color:var(--ink); font-family:var(--f-body); font-size:14px; line-height:1.5}
+.wrap{max-width:1360px; margin:0 auto; padding-inline:20px; padding-block:0 40px}
+.norma{display:flex; flex-wrap:wrap; gap:6px}
+.chip{font-family:var(--f-mono); font-size:11.5px; padding:3px 8px; border:1px solid var(--line); border-radius:4px; color:var(--muted); background:var(--surface)}
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:8px}
+.panel + .panel{margin-top:14px}
+.panel h2{font-family:var(--f-display); font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin:0; padding:12px 16px; border-bottom:1px solid var(--line); color:var(--muted); display:flex; justify-content:space-between; align-items:center; gap:8px}
+.panel .body{padding:14px 16px; display:grid; grid-template-columns:minmax(0,1fr); gap:12px}
+.drop{position:relative; display:grid; grid-template-columns:40px 1fr; gap:10px; align-items:center; padding:12px; border:1.5px dashed var(--line); border-radius:6px; background:var(--surface-2); cursor:pointer; transition:border-color .15s, background .15s}
+.drop:hover,.drop.over{border-color:var(--accent); background:var(--accent-soft)}
+.drop:focus-within{outline:2px solid var(--accent); outline-offset:2px}
+.drop input{position:absolute; inset:0; opacity:0; cursor:pointer; width:100%}
+.drop .ico{width:40px; height:40px; border-radius:6px; background:var(--surface); border:1px solid var(--line); display:grid; place-items:center; font-family:var(--f-mono); font-size:10.5px; font-weight:600; color:var(--accent)}
+.drop b{display:block; font-weight:600}
+.drop small{display:block; color:var(--muted); font-size:12px; word-break:break-all}
+.drop.done small{color:var(--ok)}
+.drop.err small{color:var(--bad)}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px 10px}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:8px 10px}
+label.f{display:grid; gap:3px; font-size:11.5px; color:var(--muted); font-weight:500}
+input.t, select.t{font:inherit; font-size:13.5px; color:var(--ink); background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:6px 8px; width:100%; min-width:0}
+input.t:focus, select.t:focus{outline:2px solid var(--accent); outline-offset:0; border-color:transparent}
+input.num{font-family:var(--f-mono); text-align:right}
+.uc{display:grid; gap:6px}
+.uc-row{display:grid; grid-template-columns:72px 1fr 34px 58px 34px 26px; gap:5px; align-items:center}
+.uc-row.head{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em}
+.uc-row input{padding:5px 6px; font-size:12.5px}
+.icon-btn{border:1px solid var(--line); background:var(--surface); color:var(--muted); border-radius:5px; height:28px; cursor:pointer; font:inherit; font-size:14px; line-height:1}
+.icon-btn:hover{color:var(--bad); border-color:var(--bad)}
+.link-btn{border:none; background:none; color:var(--accent); font:inherit; font-size:12.5px; font-weight:600; cursor:pointer; padding:0; justify-self:start}
+.detect{font-size:12.5px; padding:8px 10px; border-radius:6px; display:flex; gap:8px; align-items:flex-start}
+.detect.ok{background:var(--ok-soft); color:var(--ink)}
+.detect.warn{background:var(--warn-soft); color:var(--ink)}
+.detect .dot{flex:none; width:8px; height:8px; border-radius:50%; margin-top:6px}
+.detect.ok .dot{background:var(--ok)} .detect.warn .dot{background:var(--warn)}
+.avisos{margin:0; padding-left:18px; font-size:12.5px; color:var(--warn)}
+.btn{font:inherit; font-weight:600; font-size:13px; border-radius:6px; padding:8px 14px; cursor:pointer; border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink)}
+.btn.ghost{background:transparent; color:var(--accent)}
+.btn:disabled{opacity:.5; cursor:default}
+.btn:focus-visible,.icon-btn:focus-visible,.link-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.plans{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px}
+.plan{border:1px solid var(--line); border-radius:6px; background:var(--surface-2); padding:6px}
+.plan svg{display:block; width:100%; height:auto}
+.plan .cap{font-size:11.5px; font-weight:600; display:flex; justify-content:space-between; padding:2px 2px 4px}
+.plan .cap span{font-family:var(--f-mono); font-weight:500; color:var(--muted)}
+.legend{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:11.5px; color:var(--muted)}
+.legend i{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px}
+.sheet-scroll{overflow-x:auto; border-radius:8px}
+
+.hero{max-width:780px; margin:0 auto; text-align:center; padding-block:40px 26px; display:grid; gap:12px; justify-items:center}
+.hero h1{font-family:var(--f-display); font-weight:800; font-size:clamp(26px,4vw,36px); line-height:1.1; letter-spacing:-.015em; margin:0; text-wrap:balance}
+.hero .lead{margin:0; font-size:15.5px; color:var(--muted); max-width:62ch; text-wrap:pretty}
+.how{list-style:none; margin:6px 0 0; padding:0; display:grid; grid-template-columns:repeat(3,1fr); gap:10px; text-align:left; font-size:12.5px; color:var(--muted); counter-reset:h}
+.how li{background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:10px 12px}
+.how b{color:var(--ink)}
+@media (max-width:720px){ .how{grid-template-columns:1fr} }
+.upload{max-width:780px; margin:0 auto 26px}
+.drops{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+@media (max-width:620px){ .drops{grid-template-columns:1fr} }
+.upload .drop{padding:18px 14px}
+.hint{margin:0; font-size:12.5px; color:var(--muted); text-align:center}
+.step{display:inline-grid; place-items:center; width:20px; height:20px; border-radius:50%; background:var(--accent); color:var(--accent-ink); font-family:var(--f-mono); font-size:11px; font-weight:600; margin-right:8px; letter-spacing:0; vertical-align:1px}
+.panel h2 .sub{text-transform:none; letter-spacing:0; font-weight:400; font-family:var(--f-body); font-size:12px}
+#results{display:grid; grid-template-columns:minmax(0,1fr); gap:18px}
+#results .panel + .panel{margin-top:0}
+.row2{display:grid; grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr); gap:18px; align-items:start}
+@media (max-width:900px){ .row2{grid-template-columns:1fr} }
+.side{display:grid; gap:18px}
+.grid-cert{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px 10px}
+.grid-cert .c2{grid-column:span 2}
+@media (max-width:560px){ .grid-cert{grid-template-columns:1fr 1fr} }
+.obs .count{font-family:var(--f-mono); font-size:11px; background:var(--warn-soft); color:var(--warn); border-radius:10px; padding:1px 8px; letter-spacing:0}
+.obs .count:empty{display:none}
+.ok-msg{margin:0; font-size:12.5px; color:var(--ok)}
+.avisos:empty{display:none}
+.avisos li + li{margin-top:6px}
+.report{display:grid; gap:12px}
+.rep-h{font-family:var(--f-display); font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:8px 0 0; text-align:center}
+.dl{display:flex; flex-direction:column; align-items:center; gap:8px; padding-block:6px 10px}
+.dl .btn{font-size:14.5px; padding:11px 26px}
+.dl .st{font-size:12.5px; color:var(--muted)}
+.reveal{animation:rise .35s ease-out}
+@keyframes rise{from{transform:translateY(8px)} to{transform:none}}
+
+.ficha{display:grid; grid-template-columns:1fr minmax(260px,340px); gap:18px 28px; padding:20px 22px; align-items:center}
+@media (max-width:760px){ .ficha{grid-template-columns:minmax(0,1fr)} }
+.eyebrow{font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.1em; color:var(--muted)}
+.smp-big{font-family:var(--f-mono); font-weight:600; font-size:clamp(26px,4vw,34px); color:var(--accent); line-height:1.15; letter-spacing:-.01em}
+.dir{font-family:var(--f-display); font-weight:700; font-size:18px; margin-top:2px}
+.meta-web{display:flex; flex-wrap:wrap; gap:6px 26px; margin:10px 0 0}
+.meta-web div{display:grid; gap:1px}
+.meta-web dt{font-size:11px; color:var(--muted)}
+.meta-web dd{margin:0; font-weight:600; font-size:13px}
+.meta-web dd.fn{font-family:var(--f-mono); font-weight:500; font-size:12px; word-break:break-all}
+.f-res{display:grid; gap:8px}
+.res-card{display:grid; gap:1px; padding:10px 14px; border-radius:6px; border-left:4px solid}
+.res-card span{font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--muted)}
+.res-card b{font-family:var(--f-display); font-size:15.5px}
+.res-card.ok{background:var(--ok-soft); border-color:var(--ok)} .res-card.ok b{color:var(--ok)}
+.res-card.bad{background:var(--bad-soft); border-color:var(--bad)} .res-card.bad b{color:var(--bad)}
+.res-card.warn{background:var(--warn-soft); border-color:var(--warn)} .res-card.warn b{color:var(--warn)}
+.panel .body.split{display:grid; grid-template-columns:minmax(160px,230px) 1fr; gap:20px; align-items:start}
+.split2{display:grid; grid-template-columns:minmax(0,1.55fr) minmax(260px,1fr); gap:22px; align-items:start; margin-top:6px}
+@media (max-width:820px){ .panel .body.split,.split2{grid-template-columns:minmax(0,1fr)} #planTerreno{max-width:260px} }
+.stack{display:grid; gap:14px}
+.cerr{display:grid; gap:10px; padding-top:12px; border-top:1px solid var(--line)}
+.h3{font-family:var(--f-display); font-size:14px; font-weight:700; margin:0 0 8px}
+.wt{width:100%; border-collapse:collapse; font-size:13px}
+.wt th,.wt td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:left}
+.wt thead th{font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); border-bottom:1.5px solid var(--ink); white-space:nowrap}
+.wt .r,.wt td.num{text-align:right}
+.wt .num{font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap}
+.wt .strong{font-weight:600}
+.wt tfoot td{font-weight:700; border-top:1.5px solid var(--ink); border-bottom:none}
+.wt.kv th{font-weight:500; color:var(--muted); width:52%}
+.wt.kv td{text-align:right}
+.wt.kv tr.ref th,.wt.kv tr.ref td{font-style:italic; opacity:.85}
+.wt .sw{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:0}
+.tscroll{overflow-x:auto}
+.muted{color:var(--muted)}
+.fine{font-size:12px; color:var(--muted); margin:8px 0 0}
+.pill{display:inline-block; font-size:12px; font-weight:700; padding:2px 10px; border-radius:20px}
+.pill.ok{background:var(--ok-soft); color:var(--ok)} .pill.bad{background:var(--bad-soft); color:var(--bad)} .pill.warn{background:var(--warn-soft); color:var(--warn)}
+.agip{background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:14px}
+.ag-tot{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+.ag-tot span{font-size:12.5px; color:var(--muted)}
+.ag-tot b{font-size:22px; font-weight:600}
+.ag-det{margin:2px 0 8px; font-size:12.5px; color:var(--muted)}
+.agip .wt{font-size:12.5px}
+.agip .wt th,.agip .wt td{padding:6px 2px}
+details#certEdit{margin-top:12px; border-top:1px solid var(--line); padding-top:10px}
+details#certEdit summary{cursor:pointer; font-size:12.5px; font-weight:600; color:var(--accent)}
+details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.edit-body{display:grid; gap:10px; margin-top:10px}
+.agip .grid-cert{grid-template-columns:1fr 1fr}
+.agip .uc-row{grid-template-columns:58px 1fr 28px 48px 28px 24px}
+.concl{grid-template-columns:1fr 1fr!important; gap:14px!important}
+@media (max-width:760px){ .concl{grid-template-columns:1fr!important} }
+.concl-card{display:grid; gap:4px; align-content:start; padding:14px 16px; border-radius:6px; border-left:4px solid}
+.concl-card .lab{font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--muted)}
+.concl-card > b{font-family:var(--f-display); font-size:17px; line-height:1.25}
+.concl-card p{margin:2px 0 0; font-size:13px}
+.concl-card.ok{background:var(--ok-soft); border-color:var(--ok)} .concl-card.ok > b{color:var(--ok)}
+.concl-card.bad{background:var(--bad-soft); border-color:var(--bad)} .concl-card.bad > b{color:var(--bad)}
+.concl-card.warn{background:var(--warn-soft); border-color:var(--warn)} .concl-card.warn > b{color:var(--warn)}
+.prev.off{position:absolute; left:-10000px; top:0; width:900px}
+
+/* ---- Identidad (colores del informe) ---- */
+.hero{max-width:none!important; margin:20px 0 26px!important; padding:34px 22px 26px!important; border-radius:14px; background:var(--grad); color:#fff}
+.hero h1{color:#fff; font-weight:900; text-shadow:0 1px 2px rgba(120,30,0,.18)}
+.hero .lead{color:rgba(255,255,255,.94)!important; font-weight:400}
+.hero .chip{background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.45); color:#fff}
+.hero .how{max-width:900px; width:100%}
+.hero .how li{border:none; box-shadow:0 2px 8px rgba(120,30,0,.12)}
+.panel{border-radius:10px}
+.panel h2{color:var(--accent); font-weight:900; border-bottom:2px solid var(--rule)}
+.step{background:var(--accent)}
+.btn{background:var(--grad); border:none; font-weight:700; box-shadow:0 2px 8px rgba(231,61,30,.25)}
+.btn:hover:not(:disabled){filter:brightness(1.05)}
+.drop .ico{color:var(--accent); font-weight:700}
+.wt thead th{background:var(--accent); color:#fff; border-bottom:none}
+.wt thead th:first-child{border-top-left-radius:6px} .wt thead th:last-child{border-top-right-radius:6px}
+.wt:not(.kv) tbody tr:nth-child(even) td{background:var(--surface-2)}
+.wt tfoot td{border-top:2px solid var(--accent)}
+.smp-big{color:var(--accent)}
+.ficha{border-top:5px solid transparent; border-image:var(--grad) 1; border-image-slice:1 0 0 0}
+.agip{border-left:4px solid var(--accent)}
+
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
+@media (max-width:520px){ .grid3{grid-template-columns:1fr 1fr} .uc-row{grid-template-columns:62px 1fr 30px 52px 30px 24px} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+
+<style id="report-css">
+/* Hoja del informe: siempre en papel claro, también en tema oscuro */
+.sheet{--p-ink:#2a1d18; --p-muted:#7a625a; --p-line:#f3d9cc; --p-soft:#fff7f3; --p-head:#e73d1e; --p-blue:#f79214; --p-ok:#1a7a34; --p-ok-bg:#eaf8ed; --p-bad:#a4161a; --p-bad-bg:#fde6e4; --p-warn:#8a4f00; --p-warn-bg:#fff4d6;
+  width:794px; min-height:1123px; margin:0 auto; background:#fff; color:var(--p-ink); font-family:"Lato","Segoe UI",Arial,sans-serif; font-size:11px; line-height:1.45; padding:40px 44px 34px; box-shadow:0 1px 3px rgba(20,30,50,.12),0 8px 24px rgba(20,30,50,.08)}
+.sheet *{box-sizing:border-box}
+.sheet .num{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums; white-space:nowrap}
+.sheet .hd{display:grid; grid-template-columns:1fr auto; gap:6px 20px; border-bottom:2.5px solid var(--p-head); padding-bottom:12px}
+.sheet .hd .k{font-family:"Lato",Arial,sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--p-blue)}
+.sheet .hd h1{font-family:"Lato",Arial,sans-serif; font-size:21px; font-weight:800; line-height:1.15; margin:2px 0 0; color:var(--p-head); letter-spacing:-.01em}
+.sheet .hd .norm{font-size:10px; color:var(--p-muted); margin-top:3px}
+.sheet .hd .smp{text-align:right; align-self:end}
+.sheet .hd .smp div{font-size:9px; color:var(--p-muted); text-transform:uppercase; letter-spacing:.08em}
+.sheet .hd .smp strong{font-family:"IBM Plex Mono",monospace; font-size:17px; color:var(--p-head)}
+.sheet .meta{display:grid; grid-template-columns:repeat(4,auto); justify-content:space-between; gap:4px 16px; padding:9px 0 4px; font-size:10.5px}
+.sheet .meta span{color:var(--p-muted)}
+.sheet h2{font-family:"Lato",Arial,sans-serif; font-size:13px; font-weight:700; color:var(--p-head); margin:18px 0 7px; display:flex; gap:8px; align-items:baseline}
+.sheet h2 .n{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--p-blue)}
+.sheet p{margin:0 0 7px}
+.sheet table{width:100%; border-collapse:collapse; font-size:10.5px}
+.sheet th{font-weight:600; text-align:left; font-size:9.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--p-muted); border-bottom:1.5px solid var(--p-ink); padding:5px 6px}
+.sheet td{border-bottom:1px solid var(--p-line); padding:6px 6px; vertical-align:top}
+.sheet td.r,.sheet th.r{text-align:right}
+.sheet tr.tot td{font-weight:700; border-bottom:1.5px solid var(--p-ink); border-top:1.5px solid var(--p-ink)}
+.sheet .sw{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:6px; vertical-align:-1px}
+.sheet .res{font-weight:700; font-size:10px; letter-spacing:.03em; white-space:nowrap}
+.sheet .res.ok{color:var(--p-ok)} .sheet .res.bad{color:var(--p-bad)} .sheet .res.warn{color:var(--p-warn)}
+.sheet .note{font-size:9.8px; color:var(--p-muted); background:var(--p-soft); border-left:3px solid var(--p-line); padding:7px 10px; margin-top:7px}
+.sheet .ref{color:var(--p-muted); font-style:italic}
+.sheet .verdict{margin:18px 0 4px; border:1.5px solid var(--p-ink); border-radius:4px; overflow:hidden}
+.sheet .verdict .row{display:grid; grid-template-columns:150px 1fr; border-bottom:1px solid var(--p-line)}
+.sheet .verdict .row:last-child{border-bottom:none}
+.sheet .verdict .lab{padding:9px 11px; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--p-muted); background:var(--p-soft); border-right:1px solid var(--p-line)}
+.sheet .verdict .val{padding:8px 12px}
+.sheet .verdict .big{font-family:"Lato",Arial,sans-serif; font-weight:800; font-size:14px; letter-spacing:.01em}
+.sheet .verdict .ok .big{color:var(--p-ok)} .sheet .verdict .bad .big{color:var(--p-bad)} .sheet .verdict .warn .big{color:var(--p-warn)}
+.sheet .verdict .ok{background:var(--p-ok-bg)} .sheet .verdict .bad{background:var(--p-bad-bg)} .sheet .verdict .warn{background:var(--p-warn-bg)}
+.sheet .verdict .val p{margin:3px 0 0; font-size:10.5px}
+.sheet .cols{display:grid; grid-template-columns:1.35fr 1fr; gap:22px}
+.sheet .foot{margin-top:18px; padding-top:8px; border-top:1px solid var(--p-line); font-size:9px; color:var(--p-muted)}
+.sheet .empty{padding:28px; text-align:center; color:var(--p-muted); border:1px dashed var(--p-line); border-radius:4px}
+
+.sheet .hd{background:linear-gradient(100deg,#e8421e 0%,#f79214 55%,#fec807 100%); border:none; border-radius:8px; padding:14px 18px; color:#fff}
+.sheet .hd .k,.sheet .hd h1,.sheet .hd .norm,.sheet .hd .smp div,.sheet .hd .smp strong{color:#fff}
+.sheet .hd h1{font-weight:900}
+.sheet .hd .norm{opacity:.95}
+.sheet .meta{background:#fff3ee; border-left:4px solid #e73d1e; border-radius:4px; padding:8px 12px; margin-top:10px}
+.sheet h2{font-weight:900; border-bottom:2px solid #fec807; padding-bottom:3px}
+.sheet th{background:#e73d1e; color:#fff; border-bottom:none}
+.sheet tr:nth-child(odd) td{background:#fff7f3}
+.sheet tr.tot td{background:#fdf0ea; border-top:1.5px solid #e73d1e; border-bottom:1.5px solid #e73d1e}
+.sheet .note{border-left-color:#f79214}
+.sheet .verdict{border:1.5px solid #e9c3b3; border-radius:8px}
+@media print{ .sheet{box-shadow:none; width:auto; min-height:0; padding:0} @page{size:A4; margin:14mm} }
+</style>
+
+
+<style>html,body{margin:0}</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="norma"><span class="chip">Art. 23 Ley 6.437</span><span class="chip">Título 5 Reglamento Técnico</span><span class="chip">Formato DXF Detalle Layers Bloques v4</span></div>
+    <h1>Excedente fiscal y tolerancia superficial</h1>
+    <p class="lead">Para Constitución de Estado Parcelario en la Ciudad de Buenos Aires. Compara las superficies del archivo de relevamiento con el título de dominio y con el Certificado de Empadronamiento de AGIP, y genera el informe comparativo.</p>
+    <ol class="how">
+      <li><b>Terreno.</b> Mensura (09-M-PARCELA) contra Título (14-M-TITULO), según el art. 23 de la Ley 6.437: tolerancia del 5% con muros o del 1% sin cerramiento materializado.</li>
+      <li><b>Edificado.</b> Superficies de las capas M-M-##-SUP, clasificadas por color, contra las unidades constructivas de AGIP, según el Título 5: tolerancia del 5%, 3% o 2%.</li>
+      <li><b>Resultado.</b> Indica si hay excedente fiscal y si corresponde declarar un alta o una baja ante AGIP.</li>
+    </ol>
+  </header>
+
+  <section class="panel upload" aria-labelledby="hArch">
+    <h2 id="hArch"><span><span class="step">1</span>Documentación</span><button class="link-btn" id="bReset" type="button" hidden>Empezar de nuevo</button></h2>
+    <div class="body">
+      <div class="drops">
+        <label class="drop" id="dropDxf">
+          <input type="file" id="fDxf" accept=".dxf">
+          <span class="ico">DXF</span>
+          <span><b>Archivo de relevamiento</b><small id="sDxf">Arrastrá el .dxf o hacé clic para elegirlo</small></span>
+        </label>
+        <label class="drop" id="dropPdf">
+          <input type="file" id="fPdf" accept=".pdf,application/pdf">
+          <span class="ico">PDF</span>
+          <span><b>Certificado de Empadronamiento</b><small id="sPdf">Arrastrá el PDF de AGIP o hacé clic para elegirlo</small></span>
+        </label>
+      </div>
+      <p class="hint" id="upHint">El DXF debe respetar los niveles de información de Detalle_Layers_Bloques v4. Los archivos se procesan en tu navegador y no se envían a ningún servidor. <button class="link-btn" id="bEjemplo" type="button">Ver un ejemplo resuelto (Bogotá 3922)</button></p>
+      <p class="hint" id="manualHint" hidden>¿El certificado es un escaneo y no se pudo leer? <button class="link-btn" id="bManual" type="button">Cargar los datos a mano</button></p>
+    </div>
+  </section>
+
+  <div id="results" hidden>
+    <section class="panel ficha" id="ficha" aria-label="Identificación de la parcela"></section>
+
+    <section class="panel" aria-labelledby="hTer">
+      <h2 id="hTer"><span><span class="step">2</span>Terreno · Mensura contra título</span><span class="legend"><span><i style="background:#2f5fd0"></i>Mensura</span><span><i style="background:#e0ac00"></i>Título</span></span></h2>
+      <div class="body split">
+        <div id="planTerreno"></div>
+        <div class="stack">
+          <div id="terrenoTabla"></div>
+          <div class="cerr">
+            <div class="detect" id="murosDet"></div>
+            <label class="f">Cerramiento considerado
+              <select class="t" id="cCerr">
+                <option value="muros">Límite cerrado por muros · 5%</option>
+                <option value="otro">No materializado o precario · 1%</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="hEd">
+      <h2 id="hEd"><span><span class="step">3</span>Superficie edificada · Relevamiento contra AGIP</span><span class="legend" id="legend"></span></h2>
+      <div class="body">
+        <div class="plans" id="plans"></div>
+        <div class="split2">
+          <div><h3 class="h3">Detalle por planta</h3><div id="edifTabla"></div></div>
+          <aside class="agip">
+            <h3 class="h3">Certificado AGIP</h3>
+            <div id="agipResumen"></div>
+            <details id="certEdit">
+              <summary>Corregir datos del certificado</summary>
+              <div class="edit-body">
+                <div class="grid-cert">
+                  <label class="f c2">Calle<input class="t" id="cCalle"></label>
+                  <label class="f">Número<input class="t" id="cNro"></label>
+                  <label class="f">Partida<input class="t" id="cPartida"></label>
+                  <label class="f">Sección<input class="t" id="cSec"></label>
+                  <label class="f">Manzana<input class="t" id="cMza"></label>
+                  <label class="f">Parcela<input class="t" id="cPar"></label>
+                  <label class="f">Fecha cert.<input class="t" id="cFecha"></label>
+                  <label class="f c2">Terreno m²<input class="t num" id="cTerreno" inputmode="decimal"></label>
+                </div>
+                <div class="uc" id="ucBox"></div>
+                <button class="link-btn" id="ucAdd" type="button">+ Agregar unidad constructiva</button>
+              </div>
+            </details>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel obs" id="obsPanel" aria-labelledby="hObs" hidden>
+      <h2 id="hObs"><span>Observaciones</span><span class="count" id="obsCount"></span></h2>
+      <div class="body"><ul class="avisos" id="avisos"></ul></div>
+    </section>
+
+    <section class="panel" aria-labelledby="hCon">
+      <h2 id="hCon"><span><span class="step">4</span>Conclusión</span></h2>
+      <div class="body concl" id="conclusion"></div>
+    </section>
+
+    <div class="dl">
+      <button class="btn" id="bPdf" type="button">Descargar PDF</button>
+      <span class="st" id="dlStatus">El PDF lleva el formato de informe en hoja A4.</span>
+      <button class="link-btn" id="bPrev" type="button">Ver vista previa del PDF</button>
+    </div>
+    <div class="prev off" id="pdfPrev"><div class="sheet-scroll"><article class="sheet" id="sheet"></article></div></div>
+  </div>
+</div>
+
+<script>/* ===== Motor: lectura DXF, superficies y reglas (Art. 23 Ley 6.437 / Título 5) ===== */
+const Engine = (() => {
+
+  // ---------- Clasificación de colores en capas *-SUP (Detalle_Layers_Bloques v4) ----------
+  // grupo: 'construido' suma al total comparable con AGIP; 'descubierta' se informa; 'excluida' no se computa
+  const COLORES = {
+    1:   { nombre: 'Cubierta',                 col: 'cub',   grupo: 'construido' },
+    2:   { nombre: 'Semicubierta',             col: 'semi',  grupo: 'construido' },
+    4:   { nombre: 'Balcón semicubierto',      col: 'otras', grupo: 'construido' },
+    30:  { nombre: 'Cuerpo saliente',          col: 'otras', grupo: 'construido' },
+    52:  { nombre: 'Superficie precaria',      col: 'otras', grupo: 'construido' },
+    104: { nombre: 'Superficie en contravención', col: 'otras', grupo: 'construido' },
+    3:   { nombre: 'Descubierta',              col: 'desc',  grupo: 'descubierta' },
+    204: { nombre: 'Balcón descubierto',       col: 'desc',  grupo: 'descubierta' },
+    200: { nombre: 'Superpuesta interior',     grupo: 'excluida' },
+    220: { nombre: 'Superpuesta exterior',     grupo: 'excluida' },
+    32:  { nombre: 'Vano a descontar',         grupo: 'excluida' },
+    150: { nombre: 'Pileta',                   grupo: 'excluida' },
+    155: { nombre: 'Superficie invadida',      grupo: 'excluida' },
+    7:   { nombre: 'Muro común exterior / columnas', grupo: 'excluida' },
+  };
+
+  const CAPA = {
+    parcela: '09-M-PARCELA',
+    titulo: '14-M-TITULO',
+    muros: '10-M-MURO-SEPARATIVO-PARC',
+    excedente: '11-M-EXCEDENTE',
+  };
+  const RE_SUP = /^M-MH?-(PB|\d{2}[PSE])-SUP$/i;
+
+  // ---------- Lector DXF ASCII ----------
+  function decode(buf) {
+    const u8 = new Uint8Array(buf);
+    const head = new TextDecoder('latin1').decode(u8.slice(0, 22));
+    if (head.startsWith('AutoCAD Binary DXF')) throw new Error('El DXF está guardado en formato binario. Guardalo como DXF ASCII (texto) y volvé a cargarlo.');
+    let txt = new TextDecoder('utf-8').decode(u8);
+    const m = txt.match(/\$ACADVER\s*\r?\n\s*1\s*\r?\n\s*(AC\d{4})/);
+    if (m && m[1] < 'AC1021') txt = new TextDecoder('windows-1252').decode(u8); // anteriores a 2007: ANSI
+    return txt;
+  }
+
+  function pairs(txt) {
+    const lines = txt.split(/\r?\n/);
+    const out = [];
+    for (let i = 0; i + 1 < lines.length; i += 2) out.push([parseInt(lines[i], 10), lines[i + 1]]);
+    return out;
+  }
+
+  function parseDxf(txt) {
+    const P = pairs(txt);
+    const layerColor = {};
+    const ents = [];
+    let section = null, i = 0;
+    let cur = null, poly = null;
+
+    const flush = () => { if (cur) { ents.push(cur); cur = null; } };
+
+    while (i < P.length) {
+      const [c, v] = P[i];
+      if (c === 0 && v === 'SECTION') { flush(); section = P[i + 1] && P[i + 1][1]; i += 2; continue; }
+      if (c === 0 && v === 'ENDSEC') { flush(); section = null; i++; continue; }
+
+      if (section === 'TABLES' && c === 0 && v === 'LAYER') {
+        let name = null, col = 7; i++;
+        while (i < P.length && P[i][0] !== 0) {
+          if (P[i][0] === 2) name = P[i][1].trim();
+          if (P[i][0] === 62) col = Math.abs(parseInt(P[i][1], 10));
+          i++;
+        }
+        if (name) layerColor[name.toUpperCase()] = col;
+        continue;
+      }
+
+      if (section === 'ENTITIES') {
+        if (c === 0) {
+          // cerrar la entidad en curso
+          if (cur && cur.type === 'VERTEX') { if (cur.pt) poly.pts.push(cur.pt); }
+          else if (cur) ents.push(cur);
+          cur = null;
+          if (poly) poly._pending = false;
+          if (v === 'VERTEX' && poly) { cur = { type: 'VERTEX' }; i++; continue; }
+          if (v === 'SEQEND') { if (poly) { ents.push(poly); poly = null; } i++; continue; }
+          const ent = { type: v, layer: '0', color: 256, ps: false, flags: 0, pts: [], text: '', name: '' };
+          if (v === 'POLYLINE') { poly = ent; poly._pending = true; } else cur = ent;
+          i++; continue;
+        }
+        const tgt = cur || (poly && poly._pending ? poly : null);
+        if (tgt) {
+          if (tgt.type === 'VERTEX') {
+            tgt.pt = tgt.pt || [0, 0, 0];
+            if (c === 10) tgt.pt[0] = +v; else if (c === 20) tgt.pt[1] = +v; else if (c === 42) tgt.pt[2] = +v;
+            else if (c === 70 && (+v & 16)) tgt.pt.control = true;
+          } else {
+            if (c === 8) tgt.layer = v.trim();
+            else if (c === 62) tgt.color = parseInt(v, 10);
+            else if (c === 67) tgt.ps = +v === 1;
+            else if (c === 70) tgt.flags = parseInt(v, 10);
+            else if (c === 1 && (tgt.type === 'TEXT' || tgt.type === 'MTEXT')) tgt.text += v;
+            else if (c === 2 && tgt.type === 'INSERT') tgt.name = v.trim();
+            else if (tgt.type === 'LWPOLYLINE') {
+              if (c === 10) tgt.pts.push([+v, 0, 0]);
+              else if (c === 20 && tgt.pts.length) tgt.pts[tgt.pts.length - 1][1] = +v;
+              else if (c === 42 && tgt.pts.length) tgt.pts[tgt.pts.length - 1][2] = +v;
+            } else if (tgt.type === 'LINE') {
+              if (c === 10) tgt.pts[0] = [+v, (tgt.pts[0] || [])[1] || 0, 0];
+              else if (c === 20) { tgt.pts[0] = tgt.pts[0] || [0, 0, 0]; tgt.pts[0][1] = +v; }
+              else if (c === 11) tgt.pts[1] = [+v, (tgt.pts[1] || [])[1] || 0, 0];
+              else if (c === 21) { tgt.pts[1] = tgt.pts[1] || [0, 0, 0]; tgt.pts[1][1] = +v; }
+            }
+          }
+        }
+        i++; continue;
+      }
+      i++;
+    }
+    flush();
+    // POLYLINE: filtrar vértices de control (splines) y marcar cerrado
+    for (const e of ents) {
+      if (e.type === 'POLYLINE') { e.pts = e.pts.filter(p => p && !p.control); delete e._pending; }
+      e.layerU = (e.layer || '').toUpperCase();
+      e.colorReal = (e.color === 256 || e.color === 0 || e.color == null) ? (layerColor[e.layerU] ?? 7) : Math.abs(e.color);
+    }
+    return { ents: ents.filter(e => !e.ps && e.type !== 'VERTEX'), layerColor };
+  }
+
+  // ---------- Geometría ----------
+  // Área con signo de polilínea con arcos (bulge): shoelace + segmentos circulares
+  function signedArea(pts) {
+    let s = 0; const n = pts.length;
+    for (let k = 0; k < n; k++) {
+      const [x1, y1, b] = pts[k], [x2, y2] = pts[(k + 1) % n];
+      s += x1 * y2 - x2 * y1;
+      if (b) {
+        const c = Math.hypot(x2 - x1, y2 - y1), th = 4 * Math.atan(b);
+        const sh = Math.sin(th / 2);
+        if (sh !== 0) s += (c * c / (4 * sh * sh)) * (th - Math.sin(th));
+      }
+    }
+    return s / 2;
+  }
+
+  // Densifica arcos para dibujar
+  function flatten(pts) {
+    const out = []; const n = pts.length;
+    for (let k = 0; k < n; k++) {
+      const [x1, y1, b] = pts[k], [x2, y2] = pts[(k + 1) % n];
+      out.push([x1, y1]);
+      if (b) {
+        const th = 4 * Math.atan(b), c = Math.hypot(x2 - x1, y2 - y1);
+        const r = c / (2 * Math.sin(th / 2));
+        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+        const d = r * Math.cos(th / 2); // distancia centro-cuerda (con signo)
+        const ux = (x2 - x1) / c, uy = (y2 - y1) / c;
+        const cx = mx - uy * d, cy = my + ux * d;
+        const a1 = Math.atan2(y1 - cy, x1 - cx);
+        const steps = Math.max(4, Math.ceil(Math.abs(th) / 0.08));
+        for (let s = 1; s < steps; s++) {
+          const a = a1 + th * s / steps;
+          out.push([cx + Math.abs(r) * Math.cos(a), cy + Math.abs(r) * Math.sin(a)]);
+        }
+      }
+    }
+    return out;
+  }
+
+  const isClosedPoly = e => (e.type === 'LWPOLYLINE' || e.type === 'POLYLINE') && e.pts.length >= 3;
+
+  // ---------- Análisis del DXF ----------
+  function analizar(buf) {
+    const { ents } = parseDxf(decode(buf));
+    const avisos = [];
+    const poly = e => ({ layer: e.layerU, color: e.colorReal, area: Math.abs(signedArea(e.pts)), arco: e.pts.some(p => p[2]), cerrado: !!(e.flags & 1), dib: flatten(e.pts) });
+
+    const polys = ents.filter(isClosedPoly).map(poly);
+    const parcela = polys.filter(p => p.layer === CAPA.parcela);
+    const titulo = polys.filter(p => p.layer === CAPA.titulo);
+    const excedente = polys.filter(p => p.layer === CAPA.excedente);
+    const excedenteN = ents.filter(e => e.layerU === CAPA.excedente).length;
+    if (excedenteN) avisos.push(`Se encontró ${excedenteN === 1 ? 'una entidad dibujada' : excedenteN + ' entidades dibujadas'} en la capa ${CAPA.excedente}. No es correcto en un CEP: la ubicación del polígono de excedente se determina mediante mensura, no por CEP.`);
+    const murosN = ents.filter(e => e.layerU === CAPA.muros && ['LINE', 'LWPOLYLINE', 'POLYLINE', 'ARC'].includes(e.type)).length;
+    const sup = polys.filter(p => RE_SUP.test(p.layer)).map(p => ({ ...p, planta: p.layer.match(RE_SUP)[1].toUpperCase() }));
+
+    if (!parcela.length) avisos.push(`No se encontró ningún polígono en la capa ${CAPA.parcela}.`);
+    if (parcela.length > 1) avisos.push(`Hay ${parcela.length} polígonos en ${CAPA.parcela}; se sumaron.`);
+    if (!titulo.length) avisos.push(`No se encontró ningún polígono en la capa ${CAPA.titulo}.`);
+    [...parcela, ...titulo, ...sup].filter(p => !p.cerrado).forEach(p => avisos.push(`Polilínea abierta en ${p.layer} (${fmt(p.area)} m²): se calculó como cerrada, conviene revisarla.`));
+
+    const texto = ents.filter(e => e.type === 'TEXT' || e.type === 'MTEXT');
+    const numPuerta = texto.filter(e => e.layerU === '06-M-NUMERO-DE-PUERTA').map(e => e.text.trim());
+    const calles = texto.filter(e => e.layerU === '05-M-NOMBRE-DE-CALLE').map(e => e.text.trim());
+    const nparc = null;
+
+    return {
+      parcela, titulo, excedente, excedenteN, sup, murosN, avisos, numPuerta, calles,
+      manzana: polys.filter(p => p.layer === '07-M-MANZANA'),
+    };
+  }
+
+  const ORDEN_PLANTA = p => {
+    if (p === 'PB') return 0;
+    const n = parseInt(p, 10), t = p.slice(-1);
+    return t === 'S' ? -n : t === 'E' ? n - 0.5 : n;
+  };
+  const NOMBRE_PLANTA = p => {
+    if (p === 'PB') return 'Planta Baja';
+    const n = parseInt(p, 10), t = p.slice(-1);
+    return `${n}° ${t === 'S' ? 'Subsuelo' : t === 'E' ? 'Entrepiso' : 'Piso'}`;
+  };
+
+  // ---------- Reglas ----------
+  function tsTitulo5(supCert) {
+    if (supCert <= 500) return 5;
+    if (supCert <= 5000) return 3;
+    return 2;
+  }
+
+  function calcular(dxf, cert, opciones) {
+    const r2 = x => Math.round(x * 100) / 100;
+    // Terreno
+    const SSM = r2(dxf.parcela.reduce((a, p) => a + p.area, 0));
+    const SST = r2(dxf.titulo.reduce((a, p) => a + p.area, 0));
+    const tolTerreno = opciones.cerramiento === 'muros' ? 5 : 1;
+    const difT = r2(SSM - SST);
+    const pctT = SST ? difT * 100 / SST : 0;
+    let terreno;
+    if (!SSM || !SST) terreno = { estado: 'faltan', texto: 'Faltan polígonos de Mensura o Título' };
+    else if (difT <= 0) terreno = { estado: 'no', texto: 'NO ES EXCEDENTE', motivo: 'ssm<=sst' };
+    else if (pctT <= tolTerreno) terreno = { estado: 'no', texto: 'DENTRO DE TOLERANCIA', motivo: 'tol' };
+    else terreno = { estado: 'si', texto: 'EXISTE EXCEDENTE FISCAL', motivo: 'supera' };
+    const excN = dxf.excedenteN || 0;
+
+    // Edificado por planta
+    const plantas = {};
+    const excluidas = {};
+    const sinClasif = [];
+    for (const p of dxf.sup) {
+      const pl = plantas[p.planta] ||= { planta: p.planta, cub: 0, semi: 0, otras: 0, desc: 0, otrasDet: {} };
+      const k = COLORES[p.color];
+      if (!k) { sinClasif.push(p); continue; }
+      if (k.grupo === 'excluida') { (excluidas[k.nombre] ||= { n: 0, area: 0 }); excluidas[k.nombre].n++; excluidas[k.nombre].area += p.area; continue; }
+      pl[k.col] += p.area;
+      if (k.col === 'otras') pl.otrasDet[k.nombre] = (pl.otrasDet[k.nombre] || 0) + p.area;
+    }
+    const filas = Object.values(plantas).sort((a, b) => ORDEN_PLANTA(a.planta) - ORDEN_PLANTA(b.planta))
+      .map(p => ({ ...p, nombre: NOMBRE_PLANTA(p.planta), cub: r2(p.cub), semi: r2(p.semi), otras: r2(p.otras), desc: r2(p.desc), constr: r2(p.cub + p.semi + p.otras) }));
+    const tot = filas.reduce((a, f) => ({ cub: a.cub + f.cub, semi: a.semi + f.semi, otras: a.otras + f.otras, desc: a.desc + f.desc, constr: a.constr + f.constr }), { cub: 0, semi: 0, otras: 0, desc: 0, constr: 0 });
+    Object.keys(tot).forEach(k => tot[k] = r2(tot[k]));
+    const otrasTipos = {};
+    filas.forEach(f => Object.entries(f.otrasDet).forEach(([k, v]) => otrasTipos[k] = r2((otrasTipos[k] || 0) + v)));
+
+    const agip = r2((cert.unidades || []).reduce((a, u) => a + (+u.sup || 0), 0));
+    const ts = tsTitulo5(agip);
+    const difE = r2(tot.constr - agip);
+    const pctE = agip ? difE * 100 / agip : null;
+    let edificado;
+    if (!agip && !tot.constr) edificado = { estado: 'no', texto: 'SIN SUPERFICIE EDIFICADA' };
+    else if (!agip) edificado = { estado: 'alta', texto: 'CORRESPONDE ALTA', m2: tot.constr };
+    else if (Math.abs(pctE) <= ts) edificado = { estado: 'ok', texto: 'DENTRO DE TS' };
+    else if (difE > 0) edificado = { estado: 'alta', texto: 'CORRESPONDE ALTA', m2: difE };
+    else edificado = { estado: 'baja', texto: 'CORRESPONDE BAJA', m2: -difE };
+
+    return {
+      terreno: { SSM, SST, dif: difT, pct: pctT, tol: tolTerreno, agip: +cert.terreno || null, excN, ...terreno },
+      edificado: { filas, tot, agip, ts, dif: difE, pct: pctE, otrasTipos, excluidas, sinClasif, ...edificado },
+    };
+  }
+
+  function fmt(x, d = 2) {
+    if (x == null || isNaN(x)) return '—';
+    return Number(x).toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+
+  return { analizar, calcular, fmt, signedArea, flatten, COLORES, CAPA, NOMBRE_PLANTA, tsTitulo5 };
+})();
+if (typeof module !== 'undefined') module.exports = Engine;
+</script>
+<script>/* ===== Lectura del Certificado de Empadronamiento AGIP (PDF con texto) ===== */
+const Cert = (() => {
+  function num(s) {
+    if (s == null) return null;
+    s = String(s).trim();
+    if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+    const v = parseFloat(s);
+    return isNaN(v) ? null : v;
+  }
+
+  // Agrupa los fragmentos de texto en renglones según su altura en la hoja
+  function lineas(items) {
+    const it = items
+      .filter(t => t.str && t.str.trim())
+      .filter(t => Math.abs(t.transform[1]) < 0.01 && Math.abs(t.transform[2]) < 0.01) // descarta marcas de agua giradas
+      .map(t => ({ s: t.str.trim(), x: t.transform[4], y: t.transform[5] }))
+      .sort((a, b) => b.y - a.y || a.x - b.x);
+    const rows = [];
+    for (const t of it) {
+      const r = rows.find(r => Math.abs(r.y - t.y) < 4);
+      if (r) r.items.push(t); else rows.push({ y: t.y, items: [t] });
+    }
+    return rows.map(r => r.items.sort((a, b) => a.x - b.x).map(t => t.s).join(' ').replace(/\s+/g, ' '));
+  }
+
+  async function leer(pdfjsLib, buf) {
+    const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+    let rows = [];
+    for (let p = 1; p <= doc.numPages; p++) {
+      const page = await doc.getPage(p);
+      const tc = await page.getTextContent();
+      rows = rows.concat(lineas(tc.items));
+    }
+    return interpretar(rows);
+  }
+
+  function interpretar(rows) {
+    const txt = rows.join('\n');
+    const g = (re) => { const m = txt.match(re); return m ? m[1].trim() : ''; };
+    const out = {
+      calle: g(/Calle:\s*(.+?)(?:\s+Nro:|\n|$)/i),
+      nro: g(/Nro:\s*(\S+)/i),
+      partida: g(/PARTIDA MATRIZ:\s*(\d+)/i),
+      seccion: g(/SECCION:\s*(\S+)/i),
+      manzana: g(/MANZANA:\s*(\S+)/i),
+      parcela: g(/PARCELA:\s*(\S+)/i),
+      fecha: g(/FECHA:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i),
+      terreno: null,
+      unidades: [],
+    };
+    const iT = rows.findIndex(r => /DATOS DEL TERRENO/i.test(r));
+    const iE = rows.findIndex(r => /DATOS DEL EDIFICIO/i.test(r));
+    if (iT >= 0) {
+      for (let k = iT + 1; k < (iE > 0 ? iE : rows.length); k++) {
+        const m = rows[k].match(/^(?:SUPERFICIE\s*)?([\d.,]+)\s*$/i);
+        if (m) { out.terreno = num(m[1]); break; }
+      }
+    }
+    if (iE >= 0) {
+      for (let k = iE + 1; k < rows.length; k++) {
+        const r = rows[k];
+        if (/FECHA DE VIGENCIA|FIRMA AUTORIZADA|\$ = Pesos/i.test(r)) break;
+        if (/SUPERFICIE\s+DESTINO/i.test(r)) continue;
+        const tk = r.split(' ');
+        const sup = num(tk[0]);
+        if (sup == null || tk.length < 2) continue;
+        let rest = tk.slice(1);
+        let est = '', antig = '', categ = '';
+        if (rest.length && /^[A-Z]{1,2}$/.test(rest[rest.length - 1])) est = rest.pop();
+        if (rest.length && /^(\d{4}|EC|EP)$/.test(rest[rest.length - 1])) antig = rest.pop();
+        if (rest.length && /^[A-Z]$/.test(rest[rest.length - 1])) categ = rest.pop();
+        out.unidades.push({ sup, destino: rest.join(' '), categ, antig, est });
+      }
+    }
+    return out;
+  }
+
+  return { leer, interpretar, num };
+})();
+if (typeof module !== 'undefined') module.exports = Cert;
+</script>
+<script>
+const SAMPLE_DXF = {"parcela":[{"layer":"09-M-PARCELA","color":5,"area":141.8883193731308,"arco":false,"cerrado":true,"dib":[[18167.44,69831.2],[18161.89,69846.58],[18153.66,69844.04],[18159.28,69828.41]]}],"titulo":[{"layer":"14-M-TITULO","color":2,"area":142.53187775611877,"arco":false,"cerrado":true,"dib":[[18153.62,69844.03],[18159.22,69828.44],[18167.44,69831.14],[18161.89,69846.58]]}],"excedente":[],"excedenteN":0,"sup":[{"layer":"M-M-PB-SUP","color":1,"area":111.66646207856597,"arco":true,"cerrado":true,"dib":[[18160.11,69829.55],[18159.01,69829.16],[18153.66,69844.04],[18161.89,69846.58],[18165.84,69835.64],[18160.31,69833.64],[18161.01,69831.7],[18161.06,69831.58],[18161.1,69831.46],[18161.13,69831.34],[18161.15,69831.22],[18161.16,69831.09],[18161.16,69830.97],[18161.15,69830.85],[18161.13,69830.72],[18161.1,69830.6],[18161.06,69830.48],[18161.01,69830.37],[18160.95,69830.26],[18160.89,69830.15],[18160.81,69830.05],[18160.73,69829.96],[18160.64,69829.87],[18160.55,69829.79],[18160.44,69829.72],[18160.34,69829.65],[18160.22,69829.6]],"planta":"PB"},{"layer":"M-M-01P-SUP","color":3,"area":12.880000114440918,"arco":false,"cerrado":true,"dib":[[18162.38,69834.39],[18165.84,69835.64],[18164.65,69838.93],[18161.19,69837.68]],"planta":"01P"},{"layer":"M-M-01P-SUP","color":1,"area":88.96193671226501,"arco":false,"cerrado":true,"dib":[[18161.89,69846.58],[18164.65,69838.93],[18161.19,69837.68],[18162.38,69834.39],[18157.74,69832.72],[18153.66,69844.04]],"planta":"01P"},{"layer":"M-M-01P-SUP","color":3,"area":9.824525490277185,"arco":true,"cerrado":true,"dib":[[18160.11,69829.55],[18159.01,69829.16],[18157.74,69832.72],[18160.31,69833.64],[18161.01,69831.7],[18161.06,69831.58],[18161.1,69831.46],[18161.13,69831.34],[18161.15,69831.22],[18161.16,69831.09],[18161.16,69830.97],[18161.15,69830.85],[18161.13,69830.72],[18161.1,69830.6],[18161.06,69830.48],[18161.01,69830.37],[18160.95,69830.26],[18160.89,69830.15],[18160.81,69830.05],[18160.73,69829.96],[18160.64,69829.87],[18160.55,69829.79],[18160.44,69829.72],[18160.34,69829.65],[18160.22,69829.6]],"planta":"01P"},{"layer":"M-M-PB-SUP","color":3,"area":30.221857413765974,"arco":true,"cerrado":true,"dib":[[18160.11,69829.55],[18160.22,69829.6],[18160.34,69829.65],[18160.44,69829.72],[18160.55,69829.79],[18160.64,69829.87],[18160.73,69829.96],[18160.81,69830.05],[18160.89,69830.15],[18160.95,69830.26],[18161.01,69830.37],[18161.06,69830.48],[18161.1,69830.6],[18161.13,69830.72],[18161.15,69830.85],[18161.16,69830.97],[18161.16,69831.09],[18161.15,69831.22],[18161.13,69831.34],[18161.1,69831.46],[18161.06,69831.58],[18161.01,69831.7],[18160.31,69833.64],[18165.84,69835.64],[18167.44,69831.2],[18159.28,69828.41],[18159.01,69829.16]],"planta":"PB"},{"layer":"M-M-02P-SUP","color":3,"area":71.34067499637604,"arco":false,"cerrado":true,"dib":[[18161.59,69836.57],[18161.19,69837.68],[18164.65,69838.93],[18161.89,69846.58],[18153.66,69844.04],[18154.78,69840.95],[18156.46,69841.56],[18156.98,69840.1],[18155.3,69839.49],[18156.55,69836.01],[18159.26,69836.99],[18159.66,69835.88]],"planta":"02P"},{"layer":"M-M-02P-SUP","color":1,"area":2.774500012397766,"arco":false,"cerrado":true,"dib":[[18154.78,69840.95],[18156.46,69841.56],[18156.98,69840.1],[18155.3,69839.49]],"planta":"02P"}],"murosN":10,"avisos":[],"numPuerta":["N° 3922"],"calles":["CHIVILCOY","BOGOTA","MERCEDES","BACACAY","BOGOTA"],"manzana":[{"layer":"07-M-MANZANA","color":7,"area":11096.656919002533,"arco":false,"cerrado":true,"dib":[[18070.72,69818.47],[18171.26,69849.47],[18209.17,69751.01],[18108.48,69719.76],[18070.72,69818.47]]}]};
+const SAMPLE_CERT = {calle:"BOGOTA",nro:"3922",partida:"1742",seccion:"77",manzana:"092",parcela:"001B",fecha:"11/09/2026",terreno:143,
+  unidades:[{sup:193,destino:"VIV. UNIFAMILIAR",categ:"D",antig:"1930",est:"B"},{sup:10,destino:"VIV. UNIFAMILIAR",categ:"D",antig:"1965",est:"B"}]};
+
+const $ = id => document.getElementById(id);
+const f = Engine.fmt;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const CERT_VACIO = () => ({calle:'',nro:'',partida:'',seccion:'',manzana:'',parcela:'',fecha:'',terreno:null,unidades:[]});
+const state = { dxf:null, dxfName:'', cert:CERT_VACIO(), cerramiento:'muros', ejemplo:false, certOk:false, manual:false, visible:false };
+
+// Colores ACI aproximados para la vista del dibujo
+const ACI = {1:'#e5383b',2:'#e0ac00',3:'#2a9d5c',4:'#18a3b8',5:'#2f5fd0',7:'#8a94a3',30:'#f08a24',52:'#9c7a3c',104:'#c2185b',204:'#7cc59a',32:'#9aa0a8',150:'#5fb3e6',155:'#a0a0a0',200:'#9b7fd1',220:'#9b7fd1'};
+const SW = {cub:'#e5383b', semi:'#e0ac00', otras:'#18a3b8', desc:'#2a9d5c'};
+
+const TXT_DXF = 'Arrastrá el .dxf o hacé clic para elegirlo', TXT_PDF = 'Arrastrá el PDF de AGIP o hacé clic para elegirlo';
+function salirEjemplo(){
+  if (!state.ejemplo) return;
+  Object.assign(state, { dxf:null, dxfName:'', cert:CERT_VACIO(), certOk:false, manual:false, ejemplo:false });
+  setDrop($('dropDxf'), $('sDxf'), '', TXT_DXF); setDrop($('dropPdf'), $('sPdf'), '', TXT_PDF);
+}
+// Muestra las secciones de resultados sólo cuando está toda la documentación
+function actualizar(){
+  const listo = !!state.dxf && (state.certOk || state.manual);
+  $('bReset').hidden = !(state.dxf || state.certOk || state.ejemplo || state.manual);
+  $('upHint').hidden = !!(state.dxf || state.certOk);
+  $('manualHint').hidden = !(state.dxf && !state.certOk && !state.manual);
+  $('results').hidden = !listo;
+  if (listo){ llenarForm(); render(); }
+  if (state.manual) $('certEdit').open = true;
+  if (listo && !state.visible){
+    const r = $('results'); r.classList.remove('reveal'); void r.offsetWidth; r.classList.add('reveal');
+    const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setTimeout(() => r.scrollIntoView({ behavior: quieto ? 'auto' : 'smooth', block: 'start' }), 60);
+  }
+  state.visible = listo;
+}
+
+/* ---------- Formulario del certificado ---------- */
+const CAMPOS = {cCalle:'calle', cNro:'nro', cSec:'seccion', cMza:'manzana', cPar:'parcela', cPartida:'partida', cFecha:'fecha'};
+function llenarForm(){
+  for (const [id,k] of Object.entries(CAMPOS)) $(id).value = state.cert[k] ?? '';
+  $('cTerreno').value = state.cert.terreno ?? '';
+  $('cCerr').value = state.cerramiento;
+  dibujarUC();
+}
+for (const [id,k] of Object.entries(CAMPOS)) $(id).addEventListener('input', e => { state.cert[k] = e.target.value; render(); });
+$('cTerreno').addEventListener('input', e => { state.cert.terreno = Cert.num(e.target.value); render(); });
+$('cCerr').addEventListener('change', e => { state.cerramiento = e.target.value; render(); });
+
+function dibujarUC(){
+  const rows = state.cert.unidades.map((u,i) => `
+    <div class="uc-row" data-i="${i}">
+      <input class="t num" id="uS${i}" data-k="sup" value="${u.sup ?? ''}" inputmode="decimal" aria-label="Superficie m²">
+      <input class="t" id="uD${i}" data-k="destino" value="${esc(u.destino)}" aria-label="Destino">
+      <input class="t" id="uC${i}" data-k="categ" value="${esc(u.categ)}" aria-label="Categoría">
+      <input class="t num" id="uA${i}" data-k="antig" value="${esc(u.antig)}" aria-label="Antigüedad">
+      <input class="t" id="uE${i}" data-k="est" value="${esc(u.est)}" aria-label="Estado">
+      <button class="icon-btn" type="button" data-del="${i}" aria-label="Quitar unidad">×</button>
+    </div>`).join('');
+  $('ucBox').innerHTML = `<div class="uc-row head"><span>m²</span><span>Destino (unidades constructivas)</span><span>Cat.</span><span>Antig.</span><span>Est.</span><span></span></div>${rows}`;
+}
+$('ucBox').addEventListener('input', e => {
+  const row = e.target.closest('.uc-row'); if (!row || row.classList.contains('head')) return;
+  const u = state.cert.unidades[+row.dataset.i], k = e.target.dataset.k;
+  u[k] = k === 'sup' ? Cert.num(e.target.value) : e.target.value;
+  render();
+});
+$('ucBox').addEventListener('click', e => {
+  const b = e.target.closest('[data-del]'); if (!b) return;
+  state.cert.unidades.splice(+b.dataset.del, 1); dibujarUC(); render();
+});
+$('ucAdd').addEventListener('click', () => { state.cert.unidades.push({sup:null,destino:'',categ:'',antig:'',est:''}); dibujarUC(); render(); $('uS'+(state.cert.unidades.length-1)).focus(); });
+
+/* ---------- Carga de archivos ---------- */
+function setDrop(drop, small, cls, msg){ drop.classList.remove('done','err'); if (cls) drop.classList.add(cls); small.textContent = msg; }
+
+async function cargarDxf(file){
+  setDrop($('dropDxf'), $('sDxf'), '', 'Leyendo ' + file.name + '…');
+  try {
+    const d = Engine.analizar(await file.arrayBuffer());
+    salirEjemplo();
+    state.dxf = d; state.dxfName = file.name;
+    state.cerramiento = d.murosN > 0 ? 'muros' : 'otro';
+    const n = d.parcela.length + d.titulo.length + d.sup.length;
+    setDrop($('dropDxf'), $('sDxf'), 'done', `✓ ${file.name} · ${n} polígonos leídos`);
+    if (!state.certOk && !state.manual) setDrop($('dropPdf'), $('sPdf'), '', 'Falta el certificado: ' + TXT_PDF.toLowerCase());
+    actualizar();
+  } catch(err){
+    setDrop($('dropDxf'), $('sDxf'), 'err', err.message || 'No se pudo leer el DXF.');
+  }
+}
+async function cargarPdf(file){
+  setDrop($('dropPdf'), $('sPdf'), '', 'Leyendo ' + file.name + '…');
+  try {
+    if (!window.pdfjsLib) throw new Error('No se pudo cargar el lector de PDF. Completá los datos a mano.');
+    const c = await Cert.leer(window.pdfjsLib, await file.arrayBuffer());
+    salirEjemplo();
+    state.cert = c;
+    const ok = !!(c.terreno != null || c.unidades.length);
+    state.certOk = ok;
+    setDrop($('dropPdf'), $('sPdf'), ok ? 'done' : 'err', ok ? `✓ ${file.name} · partida ${c.partida || '—'}, ${c.unidades.length} unidad(es)` : 'No se encontraron datos en el PDF (¿es un escaneo?). Podés cargarlos a mano.');
+    if (!state.dxf) setDrop($('dropDxf'), $('sDxf'), '', 'Falta el relevamiento: ' + TXT_DXF.toLowerCase());
+    if (!ok && state.dxf) state.manual = false;
+    actualizar();
+  } catch(err){
+    setDrop($('dropPdf'), $('sPdf'), 'err', err.message || 'No se pudo leer el PDF.');
+  }
+}
+function bindDrop(drop, input, fn){
+  input.addEventListener('change', () => input.files[0] && fn(input.files[0]));
+  ['dragenter','dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(t => drop.addEventListener(t, () => drop.classList.remove('over')));
+  drop.addEventListener('drop', e => { e.preventDefault(); const fl = e.dataTransfer.files[0]; if (fl) fn(fl); });
+}
+bindDrop($('dropDxf'), $('fDxf'), cargarDxf);
+bindDrop($('dropPdf'), $('fPdf'), cargarPdf);
+$('bEjemplo').addEventListener('click', () => {
+  Object.assign(state, { dxf: SAMPLE_DXF, dxfName: 'EP-BOGOTA3922.dxf', cert: structuredClone(SAMPLE_CERT), cerramiento: SAMPLE_DXF.murosN ? 'muros' : 'otro', ejemplo: true, certOk: true, manual: false });
+  setDrop($('dropDxf'), $('sDxf'), 'done', '✓ EP-BOGOTA3922.dxf · ejemplo');
+  setDrop($('dropPdf'), $('sPdf'), 'done', '✓ Certificado partida 1742 · ejemplo');
+  actualizar();
+});
+$('bManual').addEventListener('click', () => { state.manual = true; actualizar(); setTimeout(() => $('cCalle').focus(), 400); });
+$('bReset').addEventListener('click', () => {
+  Object.assign(state, { dxf:null, dxfName:'', cert:CERT_VACIO(), cerramiento:'muros', ejemplo:false, certOk:false, manual:false, visible:false });
+  $('fDxf').value = ''; $('fPdf').value = '';
+  setDrop($('dropDxf'), $('sDxf'), '', TXT_DXF); setDrop($('dropPdf'), $('sPdf'), '', TXT_PDF);
+  actualizar(); window.scrollTo({ top: 0 });
+});
+
+/* ---------- Vista del dibujo ---------- */
+function planes(){
+  const d = state.dxf;
+  if (!d){ $('plans').innerHTML = '<p style="color:var(--muted);margin:0">Cargá el DXF para ver los polígonos leídos.</p>'; $('legend').innerHTML=''; return; }
+  const base = [...d.parcela, ...d.titulo]; const all = base.length ? base : d.sup;
+  let xs=[], ys=[]; all.forEach(p => p.dib.forEach(([x,y]) => { xs.push(x); ys.push(y); }));
+  if (!xs.length){ $('plans').innerHTML=''; return; }
+  const minx=Math.min(...xs), maxx=Math.max(...xs), miny=Math.min(...ys), maxy=Math.max(...ys);
+  const pad = Math.max(maxx-minx, maxy-miny)*0.08;
+  const vb = [minx-pad, -(maxy+pad), (maxx-minx)+2*pad, (maxy-miny)+2*pad];
+  const sw = Math.max(vb[2], vb[3]) / 160;
+  const path = p => 'M' + p.dib.map(([x,y]) => `${x.toFixed(2)},${(-y).toFixed(2)}`).join('L') + 'Z';
+  const svg = (inner) => `<svg viewBox="${vb.join(' ')}" role="img">${inner}</svg>`;
+  const ghost = d.parcela.map(p => `<path d="${path(p)}" fill="none" stroke="#8a94a3" stroke-width="${sw}" stroke-dasharray="${sw*3} ${sw*2}"/>`).join('');
+  const cards = [];
+  $('planTerreno').innerHTML = (`<div class="plan"><div class="cap">Terreno<span>${f(d.parcela.reduce((a,p)=>a+p.area,0))}</span></div>${svg(
+    d.parcela.map(p=>`<path d="${path(p)}" fill="#2f5fd0" fill-opacity=".12" stroke="#2f5fd0" stroke-width="${sw*1.4}"/>`).join('') +
+    d.titulo.map(p=>`<path d="${path(p)}" fill="none" stroke="#e0ac00" stroke-width="${sw*1.4}" stroke-dasharray="${sw*4} ${sw*2}"/>`).join(''))}</div>`);
+  const porPlanta = {};
+  d.sup.forEach(p => (porPlanta[p.planta] ||= []).push(p));
+  const orden = Object.keys(porPlanta).sort((a,b)=> (a==='PB'?0:(a.endsWith('S')?-parseInt(a):parseInt(a))) - (b==='PB'?0:(b.endsWith('S')?-parseInt(b):parseInt(b))));
+  for (const pl of orden){
+    const ps = porPlanta[pl];
+    const constr = ps.filter(p => Engine.COLORES[p.color]?.grupo === 'construido').reduce((a,p)=>a+p.area,0);
+    cards.push(`<div class="plan"><div class="cap">${Engine.NOMBRE_PLANTA(pl)}<span>${f(constr)}</span></div>${svg(ghost + ps.map(p => {
+      const g = Engine.COLORES[p.color]?.grupo; const c = ACI[p.color] || '#8a94a3';
+      return `<path d="${path(p)}" fill="${c}" fill-opacity="${g==='excluida'?0.08:0.28}" stroke="${c}" stroke-width="${sw}" ${g==='excluida'||!g?`stroke-dasharray="${sw*2} ${sw*1.5}"`:''}><title>${esc(Engine.COLORES[p.color]?.nombre || 'Color '+p.color+' sin clasificar')}: ${f(p.area)} m²</title></path>`;
+    }).join(''))}</div>`);
+  }
+  $('plans').innerHTML = cards.join('');
+  $('legend').innerHTML = `<span><i style="background:#e5383b"></i>Cubierta</span><span><i style="background:#e0ac00"></i>Semicub.</span><span><i style="background:#18a3b8"></i>Otras comp.</span><span><i style="background:#2a9d5c"></i>Descubierta</span>`;
+}
+
+/* ---------- Informe ---------- */
+function smp(c){
+  const p3 = s => { s = String(s||'').trim(); const m = s.match(/^(\d+)(\D*)$/); return m ? m[1].padStart(3,'0') + m[2].toLowerCase() : s.toLowerCase(); };
+  return (c.seccion||c.manzana||c.parcela) ? `${p3(c.seccion)}-${p3(c.manzana)}-${p3(c.parcela)}` : '—';
+}
+function pct(x){ return x == null ? '—' : (x>0?'+':'') + f(x) + '%'; }
+
+function evaluar(){
+  const c = state.cert, d = state.dxf;
+  const R = Engine.calcular(d, c, { cerramiento: state.cerramiento });
+  const T = R.terreno, E = R.edificado;
+  const tolTxt = T.tol === 5 ? 'límite cerrado por muros' : 'cerramiento no materializado o precario';
+
+  // --- 1. Terreno
+  const resT = T.estado === 'si' ? '<span class="res bad">EXISTE EXCEDENTE</span>' : T.estado === 'faltan' ? '<span class="res warn">FALTAN DATOS</span>' : `<span class="res ok">${T.texto}</span>`;
+  const tolCell = T.dif <= 0 ? '<span class="ref">no aplica (SSM ≤ SST)</span>' : `<span class="num">${T.tol}%</span>`;
+  let textoT;
+  if (T.estado === 'faltan') textoT = 'Faltan los polígonos de Mensura (09-M-PARCELA) o de Título (14-M-TITULO) en el DXF.';
+  else if (T.motivo === 'ssm<=sst') textoT = `La Mensura (<b class="num">${f(T.SSM)} m²</b>) no supera al Título (<b class="num">${f(T.SST)} m²</b>), por lo que no se cumple la primera condición del art. 23 de la Ley 6.437 (SSM &gt; SST): <b>no se configura Excedente Fiscal</b>, sin necesidad de evaluar tolerancia.`;
+  else if (T.motivo === 'tol') textoT = `La Mensura supera al Título en <b class="num">${f(T.dif)} m²</b> (<span class="num">${f(T.pct)}%</span>), dentro de la tolerancia del <b>${T.tol}%</b> admitida para ${tolTxt}: <b>no se configura Excedente Fiscal</b>.`;
+  else textoT = `La Mensura supera al Título en <b class="num">${f(T.dif)} m²</b> (<span class="num">${f(T.pct)}%</span>), por encima de la tolerancia del <b>${T.tol}%</b> admitida para ${tolTxt}: <b>se configura Excedente Fiscal</b> (bien de dominio privado de la Ciudad), a determinar según los Reglamentos Técnicos.` +
+      ' La ubicación del polígono de excedente se determina mediante mensura; no corresponde en el CEP.' +
+      (T.excN ? ' <b>Atención:</b> el DXF tiene elementos dibujados en la capa 11-M-EXCEDENTE, lo que no es correcto en un CEP.' : '');
+
+  // --- 2. Edificado
+  const resE = E.estado === 'ok' || E.estado === 'no' ? `<span class="res ok">${E.texto}</span>` : `<span class="res bad">${E.texto}</span>`;
+  const otrasList = Object.entries(E.otrasTipos);
+  let textoE;
+  if (E.estado === 'ok') textoE = `La diferencia entre lo relevado (<b class="num">${f(E.tot.constr)} m²</b>) y lo empadronado por AGIP (<b class="num">${f(E.agip)} m²</b>) es de <b class="num">${pct(E.pct)}</b>, dentro del <b>${E.ts}%</b> del Título 5: la superficie construida coincide en la práctica con la empadronada y <b>no corresponde declarar ni actualizar</b> ante AGIP.`;
+  else if (E.estado === 'no') textoE = 'No hay superficie construida relevada ni empadronada.';
+  else if (!E.agip) textoE = `AGIP no registra unidades constructivas y se relevaron <b class="num">${f(E.tot.constr)} m²</b> construidos: <b>corresponde declarar el ALTA</b> de esa superficie ante AGIP.`;
+  else textoE = `Lo relevado (<b class="num">${f(E.tot.constr)} m²</b>) ${E.estado==='alta'?'supera':'es menor'} a lo empadronado por AGIP (<b class="num">${f(E.agip)} m²</b>) en <b class="num">${f(E.m2)} m²</b> (<span class="num">${pct(E.pct)}</span>), fuera del <b>${E.ts}%</b> del Título 5: <b>corresponde declarar la ${E.estado==='alta'?'ALTA':'BAJA'} de ${f(E.m2)} m²</b> ante AGIP (Dirección General de Rentas).`;
+
+  // --- Veredicto
+  const vT = T.estado === 'si' ? 'bad' : T.estado === 'faltan' ? 'warn' : 'ok';
+  const vE = E.estado === 'ok' || E.estado === 'no' ? 'ok' : 'bad';
+  const bigT = T.estado === 'si' ? 'EXISTE EXCEDENTE FISCAL' : T.estado === 'faltan' ? 'FALTAN DATOS' : 'NO EXISTE EXCEDENTE FISCAL';
+  const bigE = vE === 'ok' ? 'NO ES NECESARIO DECLARAR NI ACTUALIZAR ANTE AGIP' : `DECLARAR ${E.estado === 'alta' ? 'ALTA' : 'BAJA'} DE ${f(E.m2)} m² ANTE AGIP`;
+  const excl = Object.entries(E.excluidas);
+  return { R, T, E, tolTxt, resT, tolCell, textoT, resE, otrasList, textoE, vT, vE, bigT, bigE, excl };
+}
+
+function informe(){
+  const c = state.cert, d = state.dxf;
+  const dir = [c.calle, c.nro].filter(Boolean).join(' ') || '—';
+  const head = `
+    <div class="hd">
+      <div><div class="k">Informe comparativo</div><h1>Excedente fiscal y tolerancia superficial</h1>
+      <div class="norm">Art. 23 Ley 6.437 de Catastro CABA (terreno) · Título 5 del Reglamento Técnico (superficie edificada)</div></div>
+      <div class="smp"><div>SMP</div><strong>${esc(smp(c))}</strong></div>
+    </div>
+    <div class="meta">
+      <div><span>Dirección </span><b>${esc(dir)}, CABA</b></div>
+      <div><span>Partida </span><b>${esc(c.partida||'—')}</b></div>
+      <div><span>Certificado AGIP </span><b>${esc(c.fecha||'—')}</b></div>
+      <div><span>Archivo </span><b>${esc(state.dxfName||'—')}</b></div>
+    </div>`;
+  if (!d) return head + `<h2><span class="n">1</span>Terreno y superficie edificada</h2><div class="empty">Cargá el archivo de relevamiento (DXF) para generar el informe.</div>`;
+
+  const { R, T, E, tolTxt, resT, tolCell, textoT, resE, otrasList, textoE, vT, vE, bigT, bigE } = evaluar();
+  const sec1 = `
+    <h2><span class="n">1</span>Terreno · Mensura contra título de dominio</h2>
+    <table>
+      <tr><th>Concepto</th><th class="r">SSM (Mensura)</th><th class="r">SST (Título)</th><th class="r">Diferencia</th><th class="r">Tolerancia</th><th class="r">Resultado</th></tr>
+      <tr><td><span class="sw" style="background:#2f5fd0"></span>Terreno</td><td class="r num">${f(T.SSM)} m²</td><td class="r num">${f(T.SST)} m²</td><td class="r num">${f(T.dif)} m²<br><span class="ref">${pct(T.pct)}</span></td><td class="r">${tolCell}</td><td class="r">${resT}</td></tr>
+      <tr><td class="ref">Ref. terreno s/AGIP</td><td class="r num ref">${T.agip != null ? f(T.agip)+' m²' : '—'}</td><td colspan="4" class="ref">Dato administrativo de empadronamiento; no es el antecedente dominial que determina excedente.</td></tr>
+    </table>
+    <div class="note"><b>Art. 23, Ley 6.437:</b> Tolerancia % = (SSM − SST) × 100 / SST, aplicable sólo cuando SSM &gt; SST. Límite cerrado por muros: 5%. Cerramiento no materializado o precario: 1%. Superado ese límite, el sobrante configura Excedente Fiscal. Cerramiento considerado: <b>${tolTxt}</b>${d.murosN ? ` (${d.murosN} trazos en la capa 10-M-MURO-SEPARATIVO-PARC)` : ' (sin trazos en la capa 10-M-MURO-SEPARATIVO-PARC)'}.${T.excN ? ' <b>Observación:</b> se encontraron elementos en la capa 11-M-EXCEDENTE; en un CEP esa capa debe quedar vacía, porque la ubicación del polígono de excedente se hace mediante mensura.' : ''}</div>`;
+
+  const sec2 = `
+    <h2><span class="n">2</span>Superficie edificada · Mensura contra empadronamiento AGIP</h2>
+    <table>
+      <tr><th>Concepto</th><th class="r">S/ Mensura (DXF)</th><th class="r">S/ AGIP</th><th class="r">Diferencia</th><th class="r">TS</th><th class="r">Resultado</th></tr>
+      <tr><td><b>Total construido</b><br><span class="ref">cubierta + semicubierta${otrasList.length?' + '+otrasList.map(([k])=>k.toLowerCase()).join(' + '):''}</span></td><td class="r num"><b>${f(E.tot.constr)} m²</b></td><td class="r num"><b>${f(E.agip)} m²</b></td><td class="r num">${f(E.dif)} m²<br><span class="ref">${pct(E.pct)}</span></td><td class="r num">${E.agip?E.ts+'%':'—'}</td><td class="r">${resE}</td></tr>
+      <tr><td class="ref"><span class="sw" style="background:#2a9d5c"></span>Descubierta (informativa)</td><td class="r num ref">${f(E.tot.desc)} m²</td><td colspan="4" class="ref">AGIP no registra superficie descubierta como unidad constructiva.</td></tr>
+    </table>`;
+
+  const verdict = `
+    <div class="verdict">
+      <div class="row"><div class="lab">Terreno</div><div class="val ${vT}"><div class="big">${bigT}</div><p>${textoT}</p></div></div>
+      <div class="row"><div class="lab">Edificado</div><div class="val ${vE}"><div class="big">${bigE}</div><p>${textoE}</p></div></div>
+    </div>`;
+
+  // --- 3. Detalle
+  const filas = E.filas.map(r => `<tr><td>${r.nombre} <span class="ref">(${r.planta})</span></td><td class="r num">${f(r.cub)}</td><td class="r num">${f(r.semi)}</td><td class="r num">${f(r.otras)}</td><td class="r num"><b>${f(r.constr)}</b></td><td class="r num">${f(r.desc)}</td></tr>`).join('');
+  const excl = Object.entries(E.excluidas);
+  const ucs = (c.unidades||[]).filter(u => u.sup != null);
+  const sec3 = `
+    <h2><span class="n">3</span>Detalle por planta y referencias</h2>
+    <div class="cols">
+      <div>
+        <table>
+          <tr><th>Planta</th><th class="r"><span class="sw" style="background:${SW.cub}"></span>Cub.</th><th class="r"><span class="sw" style="background:${SW.semi}"></span>Semic.</th><th class="r"><span class="sw" style="background:${SW.otras}"></span>Otras*</th><th class="r">Constr.</th><th class="r"><span class="sw" style="background:${SW.desc}"></span>Desc.</th></tr>
+          ${filas || '<tr><td colspan="6" class="ref">No se encontraron capas M-M-##-SUP.</td></tr>'}
+          <tr class="tot"><td>Total m²</td><td class="r num">${f(E.tot.cub)}</td><td class="r num">${f(E.tot.semi)}</td><td class="r num">${f(E.tot.otras)}</td><td class="r num">${f(E.tot.constr)}</td><td class="r num">${f(E.tot.desc)}</td></tr>
+        </table>
+        <div class="note">*Otras computables: balcón semicubierto (cyan), cuerpo saliente (30), precaria (52) y contravención (104)${otrasList.length ? '. En este plano: ' + otrasList.map(([k,v])=>`${k.toLowerCase()} ${f(v)} m²`).join(', ') : '; no hay en este plano'}. Descubierta incluye balcón descubierto (204).${excl.length ? ' No computados: ' + excl.map(([k,v])=>`${k.toLowerCase()} (${v.n}, ${f(v.area)} m²)`).join(', ') + '.' : ''}</div>
+      </div>
+      <div>
+        <table>
+          <tr><th>Superficie s/certificado</th><th class="r">TS Título 5</th></tr>
+          <tr${E.ts===5?' style="font-weight:700"':''}><td>≤ 500 m²</td><td class="r num">5%</td></tr>
+          <tr${E.ts===3?' style="font-weight:700"':''}><td>&gt; 500 y ≤ 5.000 m²</td><td class="r num">3%</td></tr>
+          <tr${E.ts===2?' style="font-weight:700"':''}><td>&gt; 5.000 m²</td><td class="r num">2%</td></tr>
+        </table>
+        <table style="margin-top:12px">
+          <tr><th>Unidades AGIP</th><th class="r">m²</th><th>Cat.</th><th>Antig.</th><th>Est.</th></tr>
+          ${ucs.map(u=>`<tr><td>${esc(u.destino||'—')}</td><td class="r num">${f(u.sup,0)}</td><td>${esc(u.categ)}</td><td class="num">${esc(u.antig)}</td><td>${esc(u.est)}</td></tr>`).join('') || '<tr><td colspan="5" class="ref">Sin unidades constructivas</td></tr>'}
+        </table>
+      </div>
+    </div>`;
+
+  const hoy = new Date().toLocaleDateString('es-AR');
+  const foot = `<div class="foot">Fuentes: ${esc(state.dxfName)}; Certificado de Empadronamiento AGIP${c.partida?' partida '+esc(c.partida):''}${c.fecha?' ('+esc(c.fecha)+')':''}; Detalle_Layers_Bloques v4; art. 23 Ley 6.437 y Título 5 del Reglamento Técnico. Superficies calculadas del DXF incluyendo tramos en arco. Informe generado el ${hoy}. Control técnico preliminar: no reemplaza la evaluación del agrimensor ni el dictamen del organismo de aplicación (DGROC / AGIP).</div>`;
+
+  return head + sec1 + sec2 + verdict + sec3 + foot;
+}
+
+
+/* ---------- Vista web del informe ---------- */
+const pill = (cls, txt) => `<span class="pill ${cls}">${txt}</span>`;
+function vista(){
+  const c = state.cert, d = state.dxf;
+  const { T, E, tolTxt, textoT, textoE, vT, vE, bigT, bigE, otrasList, excl } = evaluar();
+  const dir = [c.calle, c.nro].filter(Boolean).join(' ');
+  const bigEcorto = vE === 'ok' ? 'No declarar ante AGIP' : `Declarar ${E.estado === 'alta' ? 'alta' : 'baja'} de ${f(E.m2)} m²`;
+  const bigTcorto = T.estado === 'si' ? 'Existe excedente fiscal' : T.estado === 'faltan' ? 'Faltan datos' : 'No existe excedente fiscal';
+
+  $('ficha').innerHTML = `
+    <div class="f-id">
+      <div class="eyebrow">Parcela · SMP</div>
+      <div class="smp-big">${esc(smp(c))}</div>
+      <div class="dir">${esc(dir || 'Dirección sin datos')}${dir ? ', CABA' : ''}</div>
+      <dl class="meta-web">
+        <div><dt>Partida</dt><dd>${esc(c.partida || '—')}</dd></div>
+        <div><dt>Certificado AGIP</dt><dd>${esc(c.fecha || '—')}</dd></div>
+        <div><dt>Relevamiento</dt><dd class="fn">${esc(state.dxfName || '—')}</dd></div>
+      </dl>
+    </div>
+    <div class="f-res">
+      <div class="res-card ${vT}"><span>Terreno</span><b>${bigTcorto}</b></div>
+      <div class="res-card ${vE}"><span>Edificado</span><b>${bigEcorto}</b></div>
+    </div>`;
+
+  const tolLine = T.dif <= 0 ? '<span class="muted">No aplica (SSM ≤ SST)</span>' : `<span class="num">${T.tol}%</span> <span class="muted">· ${tolTxt}</span>`;
+  $('terrenoTabla').innerHTML = `
+    <table class="wt kv">
+      <tr><th>Superficie s/Mensura (SSM)</th><td class="num">${f(T.SSM)} m²</td></tr>
+      <tr><th>Superficie s/Título (SST)</th><td class="num">${f(T.SST)} m²</td></tr>
+      <tr><th>Diferencia SSM − SST</th><td class="num">${f(T.dif)} m² <span class="muted">(${pct(T.pct)})</span></td></tr>
+      <tr><th>Tolerancia art. 23</th><td>${tolLine}</td></tr>
+      <tr><th>Resultado</th><td>${T.estado === 'si' ? pill('bad','Existe excedente') : T.estado === 'faltan' ? pill('warn','Faltan datos') : pill('ok', T.texto.charAt(0) + T.texto.slice(1).toLowerCase())}</td></tr>
+      <tr class="ref"><th>Terreno s/AGIP (referencia)</th><td class="num">${T.agip != null ? f(T.agip) + ' m²' : '—'}</td></tr>
+    </table>`;
+
+  const filas = E.filas.map(r => `<tr><td>${r.nombre}</td><td class="num">${f(r.cub)}</td><td class="num">${f(r.semi)}</td><td class="num">${f(r.otras)}</td><td class="num strong">${f(r.constr)}</td><td class="num">${f(r.desc)}</td></tr>`).join('');
+  $('edifTabla').innerHTML = `
+    <div class="tscroll"><table class="wt">
+      <thead><tr><th>Planta</th><th class="r"><i class="sw" style="background:${SW.cub}"></i>Cubierta</th><th class="r"><i class="sw" style="background:${SW.semi}"></i>Semicub.</th><th class="r"><i class="sw" style="background:${SW.otras}"></i>Otras*</th><th class="r">Construido</th><th class="r"><i class="sw" style="background:${SW.desc}"></i>Descub.</th></tr></thead>
+      <tbody>${filas || '<tr><td colspan="6" class="muted">No se encontraron capas M-M-##-SUP.</td></tr>'}</tbody>
+      <tfoot><tr><td>Total m²</td><td class="num">${f(E.tot.cub)}</td><td class="num">${f(E.tot.semi)}</td><td class="num">${f(E.tot.otras)}</td><td class="num">${f(E.tot.constr)}</td><td class="num">${f(E.tot.desc)}</td></tr></tfoot>
+    </table></div>
+    <p class="fine">*Otras computables: balcón semicubierto, cuerpo saliente, precaria y contravención${otrasList.length ? ' (en este plano: ' + otrasList.map(([k,v])=>`${k.toLowerCase()} ${f(v)} m²`).join(', ') + ')' : ''}. La descubierta incluye balcón descubierto y es informativa.${excl.length ? ' No computados: ' + excl.map(([k,v])=>`${k.toLowerCase()} ${f(v.area)} m²`).join(', ') + '.' : ''}</p>`;
+
+  const ucs = (c.unidades || []).filter(u => u.sup != null);
+  const rango = E.ts === 5 ? '≤ 500 m²' : E.ts === 3 ? '> 500 y ≤ 5.000 m²' : '> 5.000 m²';
+  $('agipResumen').innerHTML = `
+    <div class="ag-tot"><span>Total empadronado</span><b class="num">${f(E.agip)} m²</b></div>
+    <p class="ag-det">${ucs.length ? `${ucs.length} unidad${ucs.length>1?'es':''} constructiva${ucs.length>1?'s':''}: ${ucs.map(u => `${f(u.sup,0)} m²${u.antig ? ' (' + esc(u.antig) + ')' : ''}`).join(' + ')}` : 'Sin unidades constructivas'}</p>
+    <table class="wt kv">
+      <tr><th>Relevado (construido)</th><td class="num">${f(E.tot.constr)} m²</td></tr>
+      <tr><th>Diferencia</th><td class="num">${f(E.dif)} m² <span class="muted">(${pct(E.pct)})</span></td></tr>
+      <tr><th>Tolerancia Título 5</th><td>${E.agip ? `<span class="num">${E.ts}%</span> <span class="muted">· ${rango}</span>` : '—'}</td></tr>
+      <tr><th>Resultado</th><td>${vE === 'ok' ? pill('ok', E.estado === 'no' ? 'Sin superficie' : 'Dentro de TS') : pill('bad', `${E.estado === 'alta' ? 'Alta' : 'Baja'} ${f(E.m2)} m²`)}</td></tr>
+    </table>`;
+
+  $('conclusion').innerHTML = `
+    <div class="concl-card ${vT}"><span class="lab">Terreno</span><b>${bigT}</b><p>${textoT}</p></div>
+    <div class="concl-card ${vE}"><span class="lab">Edificado</span><b>${bigE}</b><p>${textoE}</p></div>`;
+}
+
+function avisos(){
+  const d = state.dxf, list = [];
+  if (d){
+    list.push(...d.avisos);
+    const R = Engine.calcular(d, state.cert, {cerramiento: state.cerramiento});
+    R.edificado.sinClasif.forEach(p => list.push(`Polígono en ${p.layer} con color ${p.color}, que no figura en la tabla de colores (${f(p.area)} m²). No se computó.`));
+    if (!state.cert.unidades.length && !state.ejemplo) list.push('El certificado no tiene unidades constructivas cargadas.');
+  }
+  $('avisos').innerHTML = list.map(a => `<li>${esc(a)}</li>`).join('');
+  $('obsCount').textContent = list.length ? String(list.length) : '';
+  $('obsPanel').hidden = !list.length;
+
+  const det = $('murosDet');
+  if (!d){ det.className = 'detect warn'; det.innerHTML = '<span class="dot"></span><span>Cargá el DXF para verificar los muros.</span>'; }
+  else if (d.murosN){ det.className = 'detect ok'; det.innerHTML = `<span class="dot"></span><span>Se encontraron <b>${d.murosN}</b> trazos en la capa 10-M-MURO-SEPARATIVO-PARC: límite cerrado por muros.</span>`; }
+  else { det.className = 'detect warn'; det.innerHTML = '<span class="dot"></span><span>No hay trazos en la capa 10-M-MURO-SEPARATIVO-PARC. Se aplica el 1%; si el terreno tiene muros, dibujalos o cambiá la opción.</span>'; }
+}
+
+function render(){
+  $('sheet').innerHTML = informe();
+  vista();
+  planes();
+  avisos();
+}
+
+/* ---------- Descargas ---------- */
+const nombreArchivo = ext => `informe_TS_${(state.cert.calle||'inmueble').replace(/\s+/g,'')}${state.cert.nro||''}.${ext}`;
+// Descarga directa del archivo (versión web independiente)
+async function guardar(filename, data){
+  const blob = data instanceof Blob ? data : new Blob([data]);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  $('dlStatus').textContent = 'Listo: ' + filename;
+}
+$('bPrev').addEventListener('click', () => {
+  const p = $('pdfPrev'), off = p.classList.toggle('off');
+  $('bPrev').textContent = off ? 'Ver vista previa del PDF' : 'Ocultar vista previa';
+  if (!off) p.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+});
+$('bPdf').addEventListener('click', async () => {
+  const b = $('bPdf'); b.disabled = true; $('dlStatus').textContent = 'Generando PDF…';
+  try {
+    const el = $('sheet');
+    const canvas = await html2canvas(el, {scale: 2, backgroundColor: '#ffffff', useCORS: true, windowWidth: 1200});
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({unit: 'mm', format: 'a4', orientation: 'portrait'});
+    const W = 210, H = 297;
+    // si la hoja excede A4 por muy poco (redondeos), se ajusta a una sola página
+    const pageHpx = canvas.height <= Math.floor(canvas.width * H / W) * 1.04 ? canvas.height : Math.floor(canvas.width * H / W);
+    for (let y = 0, i = 0; y < canvas.height; y += pageHpx, i++){
+      const part = document.createElement('canvas');
+      part.width = canvas.width; part.height = Math.min(pageHpx, canvas.height - y);
+      const ctx = part.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,part.width,part.height);
+      ctx.drawImage(canvas, 0, y, canvas.width, part.height, 0, 0, canvas.width, part.height);
+      if (i) pdf.addPage();
+      pdf.addImage(part.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, W, Math.min(H, part.height * W / canvas.width));
+    }
+    await guardar(nombreArchivo('pdf'), pdf.output('blob'));
+  } catch(e){ $('dlStatus').textContent = 'No se pudo generar el PDF.'; console.error(e); }
+  b.disabled = false;
+});
+
+actualizar();
+</script>
+
+</body>
+</html>
