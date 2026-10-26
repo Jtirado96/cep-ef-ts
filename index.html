@@ -821,7 +821,7 @@ input.num{font-family:var(--f-mono); text-align:right}
 .tscroll{overflow-x:auto}
 .muted{color:var(--muted)}
 .fine{font-size:12px; color:var(--muted); margin:8px 0 0}
-.pill{display:inline-block; font-size:12px; font-weight:700; padding:2px 10px; border-radius:20px}
+.pill{white-space:nowrap; display:inline-block; font-size:12px; font-weight:700; padding:2px 10px; border-radius:20px}
 .pill.ok{background:var(--ok-soft); color:var(--ok)} .pill.bad{background:var(--bad-soft); color:var(--bad)} .pill.warn{background:var(--warn-soft); color:var(--warn)}
 .agip{background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:14px}
 .ag-tot{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
@@ -877,6 +877,11 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 .vcard .wt{font-size:12.5px} .vcard .wt th,.vcard .wt td{padding:5px 2px}
 .vcard p{margin:0; font-size:12.5px; color:var(--muted)}
 .vcard details{font-size:12px; color:var(--muted)}
+.vcard .h3s{display:block; font-family:var(--f-body); font-size:11.5px; font-weight:400; color:var(--muted)}
+.vcard .src{font-size:12px; color:var(--muted); background:var(--surface); border:1px dashed var(--line); border-radius:5px; padding:6px 9px}
+.vcard .src b{color:var(--ink)}
+.vcard .lead-tx{color:var(--ink); font-size:13px}
+.mapbox .vcard{margin-top:6px}
 .vcard .sub-h{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-top:4px}
 .ok-tx{color:var(--ok); font-family:var(--f-body); font-weight:700; font-size:11.5px}
 .bad-tx{color:var(--bad); font-family:var(--f-body); font-weight:700; font-size:11.5px}
@@ -939,7 +944,7 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 .sheet .hd .smp strong{font-family:"IBM Plex Mono",monospace; font-size:17px; color:var(--p-head)}
 .sheet .meta{display:grid; grid-template-columns:repeat(4,auto); justify-content:space-between; gap:4px 16px; padding:9px 0 4px; font-size:10.5px}
 .sheet .meta span{color:var(--p-muted)}
-.sheet h2{font-family:"Lato",Arial,sans-serif; font-size:13px; font-weight:700; color:var(--p-head); margin:18px 0 7px; display:flex; gap:8px; align-items:baseline}
+.sheet h2{font-family:"Lato",Arial,sans-serif; font-size:13px; font-weight:700; color:var(--p-head); margin:13px 0 6px; display:flex; gap:8px; align-items:baseline}
 .sheet h2 .n{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--p-blue)}
 .sheet p{margin:0 0 7px}
 .sheet table{width:100%; border-collapse:collapse; font-size:10.5px}
@@ -952,7 +957,7 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 .sheet .res.ok{color:var(--p-ok)} .sheet .res.bad{color:var(--p-bad)} .sheet .res.warn{color:var(--p-warn)}
 .sheet .note{font-size:9.8px; color:var(--p-muted); background:var(--p-soft); border-left:3px solid var(--p-line); padding:7px 10px; margin-top:7px}
 .sheet .ref{color:var(--p-muted); font-style:italic}
-.sheet .verdict{margin:18px 0 4px; border:1.5px solid var(--p-ink); border-radius:4px; overflow:hidden}
+.sheet .verdict{margin:13px 0 4px; border:1.5px solid var(--p-ink); border-radius:4px; overflow:hidden}
 .sheet .verdict .row{display:grid; grid-template-columns:150px 1fr; border-bottom:1px solid var(--p-line)}
 .sheet .verdict .row:last-child{border-bottom:none}
 .sheet .verdict .lab{padding:9px 11px; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--p-muted); background:var(--p-soft); border-right:1px solid var(--p-line)}
@@ -962,7 +967,7 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 .sheet .verdict .ok{background:var(--p-ok-bg)} .sheet .verdict .bad{background:var(--p-bad-bg)} .sheet .verdict .warn{background:var(--p-warn-bg)}
 .sheet .verdict .val p{margin:3px 0 0; font-size:10.5px}
 .sheet .cols{display:grid; grid-template-columns:1.35fr 1fr; gap:22px}
-.sheet .foot{margin-top:18px; padding-top:8px; border-top:1px solid var(--p-line); font-size:9px; color:var(--p-muted)}
+.sheet .foot{margin-top:12px; padding-top:8px; border-top:1px solid var(--p-line); font-size:9px; color:var(--p-muted)}
 .sheet .empty{padding:28px; text-align:center; color:var(--p-muted); border:1px dashed var(--p-line); border-radius:4px}
 
 .sheet .hd{background:linear-gradient(100deg,#e8421e 0%,#f79214 55%,#fec807 100%); border:none; border-radius:8px; padding:14px 18px; color:#fff}
@@ -1028,9 +1033,9 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
       <div class="body val-grid">
         <div class="stack">
           <div class="vcard" id="vNom"></div>
-          <div class="vcard" id="vC3d"></div>
+          <div class="vcard" id="vGeo"></div>
         </div>
-        <div class="mapbox"><div id="mapa" role="region" aria-label="Mapa de la manzana"></div><p class="fine" id="mapNota"></p></div>
+        <div class="mapbox"><div id="mapa" role="region" aria-label="Mapa de la manzana"></div><p class="fine" id="mapNota"></p><div class="vcard" id="vReg"></div></div>
       </div>
     </section>
 
@@ -1689,12 +1694,12 @@ const Ciudad3D = (() => {
     return { areaDxf: areaA, areaC3d: areaB, desplazamiento: Math.hypot(cA[0] - cB[0], cA[1] - cB[1]), superposicion: union ? ambos / union : 0 };
   }
 
-  // Criterio por desplazamiento del centroide: hasta 1 m coincide; hasta 3 m coincide con diferencias
+  // Georreferenciación, por desplazamiento entre centros: hasta 1 m coincide; hasta 3 m desplazamiento leve; más, desplazamiento mayor
   const UMBRAL = { ok: 1, warn: 3 };
   function evaluar(c) {
-    if (c.desplazamiento <= UMBRAL.ok) return { estado: 'ok', texto: 'Coincide con Ciudad 3D' };
-    if (c.desplazamiento <= UMBRAL.warn) return { estado: 'warn', texto: 'Coincide con diferencias' };
-    return { estado: 'bad', texto: 'No coincide con Ciudad 3D' };
+    if (c.desplazamiento <= UMBRAL.ok) return { estado: 'ok', texto: 'Coincide' };
+    if (c.desplazamiento <= UMBRAL.warn) return { estado: 'warn', texto: 'Desplazamiento leve' };
+    return { estado: 'bad', texto: 'Desplazamiento mayor' };
   }
 
   return { consultar, comparar, evaluar, poligonos, UMBRAL, BASE };
@@ -1976,7 +1981,8 @@ function informe(){
   const secV = `
     <table class="val">
       <tr><td>Nomenclatura</td><td>${V.nomDet}</td><td>${resV(V.nom.estado, V.nomRes)}</td></tr>
-      <tr><td>Ciudad 3D</td><td>${V.c3dDet}</td><td>${V.c3dEstado === 'off' || V.c3dEstado === 'load' ? '<span class="ref">no consultado</span>' : resV(V.c3dEstado, V.c3dRes)}</td></tr>
+      <tr><td>Ciudad 3D</td><td>${V.regDet}</td><td>${V.regEstado === 'off' || V.regEstado === 'load' ? '<span class="ref">no consultado</span>' : resV(V.regEstado === 'no' ? 'bad' : V.regEstado, V.regRes)}</td></tr>
+      <tr><td>Georreferenciación</td><td>${V.geoDet}</td><td>${['off', 'load'].includes(V.geoEstado) ? '<span class="ref">no consultado</span>' : resV(['nogeo', 'nodxf', 'error'].includes(V.geoEstado) ? 'warn' : V.geoEstado, V.geoRes)}</td></tr>
     </table>`;
   const sec1 = `
     <h2><span class="n">1</span>Terreno · Mensura contra título de dominio</h2>
@@ -2111,8 +2117,8 @@ function avisos(){
     if (V.nom.estado === 'bad') list.push(`La nomenclatura del DXF (pestaña «${V.nom.dxf.nombre}») no coincide con la del certificado (${Engine.smpFormato(V.nom.cert)}).`);
     else if (V.nom.estado === 'warn') list.push(V.nom.texto + '. Según Detalle_Layers_Bloques v4, la pestaña FICHA CATASTRAL debe llamarse SSS-MMM-PPP.');
     if (!V.georef) list.push('El DXF no está en coordenadas CABA 2019 (POSGAR 2007), por lo que no se puede ubicar en el mapa ni comparar con Ciudad 3D.');
-    if (V.c3dEstado === 'no') list.push(`La parcela ${V.smpApi} no figura en Ciudad 3D. Revisá la nomenclatura o si se trata de una parcela nueva.`);
-    if ((V.c3dEstado === 'warn' || V.c3dEstado === 'bad') && V.cmp) list.push(`La parcela dibujada está desplazada ${f(V.cmp.desplazamiento)} m respecto de Ciudad 3D: revisá la georreferenciación del DXF.`);
+    if (V.regEstado === 'no') list.push(`La parcela ${V.smpApi} no figura en Ciudad 3D. Revisá la nomenclatura o si se trata de una parcela nueva.`);
+    if ((V.geoEstado === 'warn' || V.geoEstado === 'bad') && V.cmp) list.push(`Georreferenciación: la parcela del DXF está desplazada ${f(V.cmp.desplazamiento)} m respecto de su ubicación en Ciudad 3D. Revisá la georreferenciación del DXF.`);
   }
   $('avisos').innerHTML = list.map(a => `<li>${esc(a)}</li>`).join('');
   $('obsCount').textContent = list.length ? String(list.length) : '';
@@ -2162,24 +2168,33 @@ function validaciones(){
     if (cmpCache.firma !== firma) cmpCache = { firma, val: Ciudad3D.comparar(d.parcela.map(p => p.dib), res.polys) };
     cmp = cmpCache.val; ev = Ciudad3D.evaluar(cmp);
   }
-  const c3dEstado = res.estado === 'si' ? (ev ? ev.estado : 'ok') : res.estado === 'no' ? 'no' : res.estado;
+  // Registro de la parcela en Ciudad 3D y georreferenciación del DXF se evalúan por separado
+  const regEstado = res.estado === 'si' ? 'ok' : res.estado;           // ok · no · error · off · load
+  const geoEstado = res.estado !== 'si' ? (res.estado === 'no' ? 'nogeo' : res.estado)
+                  : !georef ? 'nodxf' : !res.polys.length ? 'nogeo' : ev.estado;   // ok · warn · bad · nogeo · nodxf
   const pestaña = nom.dxf ? nom.dxf.nombre : (nom.pestañas[0] ? nom.pestañas[0].nombre : '—');
+  const P = (res.estado === 'si' && res.parcela) || {};
+  const nro = v => (typeof v === 'string' && /^-?\d+([.,]\d+)?$/.test(v.trim())) ? Number(v.trim().replace(',', '.')) : v;
   return {
-    nom, georef, res, cmp, ev, c3dEstado, smpApi: variantes[0] || '—',
+    nom, georef, res, cmp, ev, regEstado, geoEstado, P, smpApi: variantes[0] || '—',
     nomRes: { ok: 'COINCIDE', bad: 'NO COINCIDE', warn: 'REVISAR', faltan: 'FALTAN DATOS' }[nom.estado],
     nomDet: `Pestaña del DXF «${esc(pestaña)}» · Certificado ${esc(Engine.smpFormato(nom.cert, true) || '—')}`,
-    c3dRes: { ok: 'COINCIDE', warn: 'DIFERENCIAS', bad: 'NO COINCIDE', no: 'NO FIGURA', error: 'SIN RESPUESTA' }[c3dEstado] || '',
-    c3dDet: res.estado === 'si' ? (cmp ? `Parcela registrada · desplazamiento ${f(cmp.desplazamiento)} m · superficie ${f(cmp.areaC3d)} m²` : 'Parcela registrada en el catastro de Ciudad 3D')
-          : res.estado === 'no' ? `La parcela ${esc(variantes[0] || '')} no figura en Ciudad 3D`
-          : res.estado === 'error' ? 'No se pudo consultar el servicio del GCBA' : 'Consulta disponible en la versión publicada de la página',
+    regRes: { ok: 'REGISTRADA', no: 'NO FIGURA', error: 'SIN RESPUESTA' }[regEstado] || '',
+    regDet: regEstado === 'ok' ? `Parcela registrada${P.fuente ? ` · datos ${esc(P.fuente)}` : ''}${P.superficie_total != null ? `: terreno ${f(nro(P.superficie_total))} m²` : ''}${P.superficie_cubierta != null ? `, cubierta ${f(nro(P.superficie_cubierta))} m²` : ''}`
+          : regEstado === 'no' ? `La parcela ${esc(variantes[0] || '')} no figura en Ciudad 3D`
+          : regEstado === 'error' ? 'No se pudo consultar el servicio del GCBA' : 'Consulta disponible en la versión publicada de la página',
+    geoRes: { ok: 'COINCIDE', warn: 'DESPLAZ. LEVE', bad: 'DESPLAZ. MAYOR', nogeo: 'SIN GEOMETRÍA', nodxf: 'SIN COORDENADAS', error: 'SIN RESPUESTA' }[geoEstado] || '',
+    geoDet: cmp ? `Desplazamiento de ${f(cmp.desplazamiento)} m entre el DXF y Ciudad 3D · superposición ${f(cmp.superposicion * 100, 0)} %`
+          : geoEstado === 'nodxf' ? 'El DXF no está en coordenadas CABA 2019' : geoEstado === 'nogeo' ? 'Sin geometría de Ciudad 3D para comparar' : 'Consulta disponible en la versión publicada de la página',
   };
 }
-const CHIP = { ok: 'ok', bad: 'bad', warn: 'warn', faltan: 'faltan', no: 'bad', error: 'warn', off: 'off', load: 'load' };
+const CHIP = { ok: 'ok', bad: 'bad', warn: 'warn', faltan: 'faltan', no: 'bad', error: 'warn', off: 'off', load: 'load', nogeo: 'off', nodxf: 'warn' };
 function chipNom(){ const V = validaciones(); return `<span class="vchip ${CHIP[V.nom.estado]}">Nomenclatura: ${V.nomRes.toLowerCase()}</span>`; }
 function chipC3d(){
   const V = validaciones();
-  const txt = { ok: 'coincide', warn: 'con diferencias', bad: 'no coincide', no: 'no figura', error: 'sin respuesta', off: 'no consultado', load: 'consultando…' }[V.c3dEstado] || '';
-  return `<span class="vchip ${CHIP[V.c3dEstado] || 'off'}">Ciudad 3D: ${txt}</span>`;
+  const reg = { ok: 'registrada', no: 'no figura', error: 'sin respuesta', off: 'no consultado', load: 'consultando…' }[V.regEstado] || '';
+  const geo = { ok: 'coincide', warn: 'desplazamiento leve', bad: 'desplazamiento mayor', nogeo: 'sin geometría', nodxf: 'sin coordenadas', error: 'sin respuesta', off: 'no consultado', load: 'consultando…' }[V.geoEstado] || '';
+  return `<span class="vchip ${CHIP[V.regEstado] || 'off'}">Ciudad 3D: ${reg}</span><span class="vchip ${CHIP[V.geoEstado] || 'off'}">Georreferencia: ${geo}</span>`;
 }
 function vistaValid(){
   const V = validaciones(), N = V.nom;
@@ -2190,41 +2205,60 @@ function vistaValid(){
     <table class="wt kv">${filasPest}<tr><th>Certificado AGIP</th><td class="num">${esc(Engine.smpFormato(N.cert, true) || '—')}</td></tr></table>
     <p>${esc(N.texto)}.</p>`;
 
-  const r = V.res, e = V.c3dEstado;
-  let cuerpo = '';
-  if (e === 'off') cuerpo = '<p>La consulta a Ciudad 3D y el mapa funcionan en la versión publicada de la página (GitHub Pages). Esta vista no permite conexiones a servicios externos.</p>';
-  else if (e === 'load') cuerpo = `<p>Consultando la parcela ${esc(V.smpApi)} en Ciudad 3D…</p>`;
-  else if (e === 'error') cuerpo = '<p>El servicio de catastro del GCBA no respondió o el navegador bloqueó la conexión. Probá de nuevo en unos minutos.</p><button class="link-btn" type="button" id="bReC3d">Reintentar</button>';
-  else if (e === 'no') cuerpo = `<p>No hay registro de la parcela ${esc(V.smpApi)} en el catastro de Ciudad 3D. Puede tratarse de una nomenclatura mal escrita o de una parcela nueva aún no incorporada.</p>`;
+  const r = V.res, P = V.P;
+  const msgOff = '<p>La consulta a Ciudad 3D y el mapa funcionan en la versión publicada de la página (GitHub Pages). Esta vista no permite conexiones a servicios externos.</p>';
+  const msgErr = '<p>El servicio de catastro del GCBA no respondió o el navegador bloqueó la conexión. Probá de nuevo en unos minutos.</p>';
+
+  // Georreferenciación: compara posición y forma de la parcela del DXF con la de Ciudad 3D
+  const g = V.geoEstado, C = V.cmp, U = Ciudad3D.UMBRAL;
+  let geoCuerpo;
+  if (g === 'off') geoCuerpo = msgOff;
+  else if (g === 'load') geoCuerpo = '<p>Esperando la geometría de Ciudad 3D…</p>';
+  else if (g === 'error') geoCuerpo = msgErr;
+  else if (g === 'nodxf') geoCuerpo = '<p>El DXF no está en coordenadas CABA 2019 (POSGAR 2007), por eso no se puede comparar su ubicación con la de Ciudad 3D.</p>';
+  else if (g === 'nogeo') geoCuerpo = `<p>${V.regEstado === 'no' ? 'La parcela no figura en Ciudad 3D, así que no hay geometría con la cual comparar.' : 'Ciudad 3D no devolvió la geometría de la parcela para compararla.'}</p>`;
   else {
-    const P = r.parcela || {};
+    const txt = { ok: `La parcela del DXF está en la misma ubicación que en Ciudad 3D: sus centros están a ${f(C.desplazamiento)} m.`,
+                  warn: `La parcela del DXF está desplazada ${f(C.desplazamiento)} m respecto de su ubicación en Ciudad 3D. Puede deberse a diferencias entre la mensura y la geometría catastral; conviene revisar la georreferenciación.`,
+                  bad: `La parcela del DXF está desplazada ${f(C.desplazamiento)} m respecto de Ciudad 3D. Revisá la georreferenciación del DXF (CABA 2019).` }[g];
+    geoCuerpo = `<p class="lead-tx">${txt}</p>
+    <table class="wt kv">
+      <tr><th>Desplazamiento entre centros</th><td class="num">${f(C.desplazamiento)} m</td></tr>
+      <tr><th>Superposición de las geometrías</th><td class="num">${f(C.superposicion * 100, 0)} %</td></tr>
+      <tr><th>Superficie geometría Ciudad 3D</th><td class="num">${f(C.areaC3d)} m²</td></tr>
+      <tr><th>Superficie mensura (DXF)</th><td class="num">${f(state.dxf.parcela.reduce((a, p) => a + p.area, 0))} m²</td></tr>
+    </table>
+    <p>Criterio: coincide hasta ${U.ok} m; desplazamiento leve hasta ${U.warn} m; mayor, más de ${U.warn} m.</p>`;
+  }
+  const pillG = { ok: ['ok', 'Coincide'], warn: ['warn', 'Desplazamiento leve'], bad: ['bad', 'Desplazamiento mayor'], nogeo: ['warn', 'Sin geometría'], nodxf: ['warn', 'Sin coordenadas'], error: ['warn', 'Sin respuesta'], off: ['warn', 'No consultado'], load: ['warn', 'Consultando…'] }[g] || ['warn', ''];
+  $('vGeo').innerHTML = `<div class="vh"><h3>Georreferenciación <span class="h3s">DXF vs Ciudad 3D</span></h3>${pill(pillG[0], pillG[1])}</div>${geoCuerpo}`;
+
+  // Parcela en Ciudad 3D: registro y datos publicados (fuente informada por el servicio)
+  const e = V.regEstado;
+  let regCuerpo;
+  if (e === 'off') regCuerpo = msgOff;
+  else if (e === 'load') regCuerpo = `<p>Consultando la parcela ${esc(V.smpApi)} en Ciudad 3D…</p>`;
+  else if (e === 'error') regCuerpo = msgErr + '<button class="link-btn" type="button" id="bReC3d">Reintentar</button>';
+  else if (e === 'no') regCuerpo = `<p>No hay registro de la parcela ${esc(V.smpApi)} en el catastro de Ciudad 3D. Puede tratarse de una nomenclatura mal escrita o de una parcela nueva aún no incorporada.</p>`;
+  else {
     const dato = (k, lab, u) => {
       let v = P[k]; if (v == null || v === '') return '';
       if (typeof v === 'string' && /^-?\d+([.,]\d+)?$/.test(v.trim())) v = Number(v.trim().replace(',', '.'));
       const txt = typeof v === 'number' ? (u ? f(v) + u : f(v, Number.isInteger(v) ? 0 : 2)) : esc(v);
       return `<tr><th>${lab}</th><td class="num">${txt}</td></tr>`;
     };
-    const num = v => typeof v === 'string' && /^-?\d+([.,]\d+)?$/.test(v.trim()) ? Number(v.trim().replace(',', '.')) : v;
     const partidaC3d = P.pdamatriz != null ? String(P.pdamatriz) : '';
     const partidaOk = partidaC3d && state.cert.partida && String(+partidaC3d) === String(+state.cert.partida);
-    cuerpo = `${V.cmp ? `<table class="wt kv">
-      <tr><th>Superficie s/Ciudad 3D (geometría)</th><td class="num">${f(V.cmp.areaC3d)} m²</td></tr>
-      <tr><th>Superficie s/Mensura (DXF)</th><td class="num">${f(state.dxf.parcela.reduce((a, p) => a + p.area, 0))} m²</td></tr>
-      <tr><th>Desplazamiento del centroide</th><td class="num">${f(V.cmp.desplazamiento)} m</td></tr>
-      <tr><th>Superposición</th><td class="num">${f(V.cmp.superposicion * 100, 0)} %</td></tr>
-    </table>
-    <p>Criterio: coincide hasta ${Ciudad3D.UMBRAL.ok} m de desplazamiento; con diferencias hasta ${Ciudad3D.UMBRAL.warn} m.</p>` : `<p>${!V.georef ? 'El DXF no está en coordenadas CABA 2019, por eso no se comparó la geometría.' : 'Ciudad 3D no devolvió la geometría de la parcela para compararla.'}</p>`}
-    <div class="sub-h">Datos registrados en Ciudad 3D${P.fuente ? ` · fuente: ${esc(P.fuente)}` : ''}</div>
+    regCuerpo = `<div class="src">${P.fuente ? `Datos de <b>${esc(P.fuente)}</b> publicados en Ciudad 3D` : 'Datos publicados en Ciudad 3D'}. No surgen del DXF ni del certificado.</div>
     <table class="wt kv">
       ${partidaC3d ? `<tr><th>Partida matriz</th><td class="num">${esc(partidaC3d)} ${state.cert.partida ? (partidaOk ? '<span class="ok-tx">✓ coincide</span>' : '<span class="bad-tx">≠ certificado</span>') : ''}</td></tr>` : ''}
-      ${dato('superficie_total', 'Superficie total', ' m²')}${dato('superficie_cubierta', 'Superficie cubierta', ' m²')}
+      ${dato('superficie_total', 'Superficie del terreno', ' m²')}${dato('superficie_cubierta', 'Superficie cubierta', ' m²')}
       ${dato('frente', 'Frente', ' m')}${dato('fondo', 'Fondo', ' m')}${dato('pisos_sobre_rasante', 'Pisos sobre rasante')}${dato('propiedad_horizontal', 'Propiedad horizontal')}
-    </table>
-    <p>Estos datos son los que el GCBA publica para la parcela en Ciudad 3D, tomados de la fuente indicada; no surgen del DXF ni del certificado.</p>`;
+    </table>`;
   }
   const log = r && r.log && r.log.length ? `<details><summary>Detalle técnico de la consulta</summary><ul>${r.log.map(l => `<li>${esc(l.url)} → ${esc(l.status)}</li>`).join('')}</ul></details>` : '';
-  const pillC = { ok: ['ok', 'Coincide'], warn: ['warn', 'Con diferencias'], bad: ['bad', 'No coincide'], no: ['bad', 'No figura'], error: ['warn', 'Sin respuesta'], off: ['warn', 'No consultado'], load: ['warn', 'Consultando…'] }[e] || ['warn', ''];
-  $('vC3d').innerHTML = `<div class="vh"><h3>Ciudad 3D</h3>${pill(pillC[0], pillC[1])}</div>${cuerpo}${log}
+  const pillR = { ok: ['ok', 'Registrada'], no: ['bad', 'No figura'], error: ['warn', 'Sin respuesta'], off: ['warn', 'No consultado'], load: ['warn', 'Consultando…'] }[e] || ['warn', ''];
+  $('vReg').innerHTML = `<div class="vh"><h3>Parcela en Ciudad 3D</h3>${pill(pillR[0], pillR[1])}</div>${regCuerpo}${log}
     ${V.smpApi !== '—' ? `<p><a href="https://ciudad3d.buenosaires.gob.ar/?smp=${encodeURIComponent((r && r.smp) || V.smpApi)}" target="_blank" rel="noopener" class="link-btn">Ver la parcela ${esc((r && r.smp) || V.smpApi)} en Ciudad 3D ↗</a></p>` : ''}`;
   const b = $('bReC3d'); if (b) b.onclick = () => verificarC3D(true) || render();
 }
