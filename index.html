@@ -1029,13 +1029,13 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
     <section class="panel ficha" id="ficha" aria-label="Identificación de la parcela"></section>
 
     <section class="panel" aria-labelledby="hVal">
-      <h2 id="hVal"><span><span class="step">2</span>Nomenclatura y ubicación</span><span class="legend"><span><i style="background:#2f6fe0"></i>Ciudad 3D</span><span><i style="background:#e73d1e"></i>Mensura DXF</span><span><i style="background:#19d3ff"></i>Manzana DXF</span></span></h2>
+      <h2 id="hVal"><span><span class="step">2</span>Ubicación y Ciudad 3D</span><span class="legend"><span><i style="background:#2f6fe0"></i>Ciudad 3D</span><span><i style="background:#e73d1e"></i>Mensura DXF</span><span><i style="background:#19d3ff"></i>Manzana DXF</span></span></h2>
       <div class="body val-grid">
         <div class="stack">
-          <div class="vcard" id="vNom"></div>
           <div class="vcard" id="vGeo"></div>
+          <div class="vcard" id="vReg"></div>
         </div>
-        <div class="mapbox"><div id="mapa" role="region" aria-label="Mapa de la manzana"></div><p class="fine" id="mapNota"></p><div class="vcard" id="vReg"></div></div>
+        <div class="mapbox"><div id="mapa" role="region" aria-label="Mapa de la manzana"></div><p class="fine" id="mapNota"></p></div>
       </div>
     </section>
 
@@ -2198,13 +2198,6 @@ function chipC3d(){
 }
 function vistaValid(){
   const V = validaciones(), N = V.nom;
-  const pillE = { ok: 'ok', bad: 'bad', warn: 'warn', faltan: 'warn' }[N.estado];
-  const filasPest = N.pestañas.length ? N.pestañas.map(p => `<tr><th>Pestaña del layout (DXF)</th><td class="num">${esc(p.nombre)}${p.smp ? '' : ' <span class="muted">· sin formato</span>'}</td></tr>`).join('') : '<tr><th>Pestaña del layout (DXF)</th><td class="muted">no encontrada</td></tr>';
-  $('vNom').innerHTML = `
-    <div class="vh"><h3>Nomenclatura</h3>${pill(pillE, V.nomRes.charAt(0) + V.nomRes.slice(1).toLowerCase())}</div>
-    <table class="wt kv">${filasPest}<tr><th>Certificado AGIP</th><td class="num">${esc(Engine.smpFormato(N.cert, true) || '—')}</td></tr></table>
-    <p>${esc(N.texto)}.</p>`;
-
   const r = V.res, P = V.P;
   const msgOff = '<p>La consulta a Ciudad 3D y el mapa funcionan en la versión publicada de la página (GitHub Pages). Esta vista no permite conexiones a servicios externos.</p>';
   const msgErr = '<p>El servicio de catastro del GCBA no respondió o el navegador bloqueó la conexión. Probá de nuevo en unos minutos.</p>';
@@ -2218,20 +2211,16 @@ function vistaValid(){
   else if (g === 'nodxf') geoCuerpo = '<p>El DXF no está en coordenadas CABA 2019 (POSGAR 2007), por eso no se puede comparar su ubicación con la de Ciudad 3D.</p>';
   else if (g === 'nogeo') geoCuerpo = `<p>${V.regEstado === 'no' ? 'La parcela no figura en Ciudad 3D, así que no hay geometría con la cual comparar.' : 'Ciudad 3D no devolvió la geometría de la parcela para compararla.'}</p>`;
   else {
-    const txt = { ok: `La parcela del DXF está en la misma ubicación que en Ciudad 3D: sus centros están a ${f(C.desplazamiento)} m.`,
-                  warn: `La parcela del DXF está desplazada ${f(C.desplazamiento)} m respecto de su ubicación en Ciudad 3D. Puede deberse a diferencias entre la mensura y la geometría catastral; conviene revisar la georreferenciación.`,
-                  bad: `La parcela del DXF está desplazada ${f(C.desplazamiento)} m respecto de Ciudad 3D. Revisá la georreferenciación del DXF (CABA 2019).` }[g];
-    geoCuerpo = `<p class="lead-tx">${txt}</p>
-    <table class="wt kv">
+    geoCuerpo = `<table class="wt kv">
       <tr><th>Desplazamiento entre centros</th><td class="num">${f(C.desplazamiento)} m</td></tr>
       <tr><th>Superposición de las geometrías</th><td class="num">${f(C.superposicion * 100, 0)} %</td></tr>
       <tr><th>Superficie geometría Ciudad 3D</th><td class="num">${f(C.areaC3d)} m²</td></tr>
       <tr><th>Superficie mensura (DXF)</th><td class="num">${f(state.dxf.parcela.reduce((a, p) => a + p.area, 0))} m²</td></tr>
-    </table>
-    <p>Criterio: coincide hasta ${U.ok} m; desplazamiento leve hasta ${U.warn} m; mayor, más de ${U.warn} m.</p>`;
+    </table>`;
   }
   const pillG = { ok: ['ok', 'Coincide'], warn: ['warn', 'Desplazamiento leve'], bad: ['bad', 'Desplazamiento mayor'], nogeo: ['warn', 'Sin geometría'], nodxf: ['warn', 'Sin coordenadas'], error: ['warn', 'Sin respuesta'], off: ['warn', 'No consultado'], load: ['warn', 'Consultando…'] }[g] || ['warn', ''];
-  $('vGeo').innerHTML = `<div class="vh"><h3>Georreferenciación <span class="h3s">DXF vs Ciudad 3D</span></h3>${pill(pillG[0], pillG[1])}</div>${geoCuerpo}`;
+  const criterio = `Coincide hasta ${U.ok} m de desplazamiento; desplazamiento leve hasta ${U.warn} m; mayor, más de ${U.warn} m.`;
+  $('vGeo').innerHTML = `<div class="vh"><h3>Georreferenciación <span class="h3s">DXF vs Ciudad 3D</span></h3><span title="${criterio}">${pill(pillG[0], pillG[1])}</span></div>${geoCuerpo}`;
 
   // Parcela en Ciudad 3D: registro y datos publicados (fuente informada por el servicio)
   const e = V.regEstado;
@@ -2249,7 +2238,7 @@ function vistaValid(){
     };
     const partidaC3d = P.pdamatriz != null ? String(P.pdamatriz) : '';
     const partidaOk = partidaC3d && state.cert.partida && String(+partidaC3d) === String(+state.cert.partida);
-    regCuerpo = `<div class="src">${P.fuente ? `Datos de <b>${esc(P.fuente)}</b> publicados en Ciudad 3D` : 'Datos publicados en Ciudad 3D'}. No surgen del DXF ni del certificado.</div>
+    regCuerpo = `<div class="src">${P.fuente ? `Datos de <b>${esc(P.fuente)}</b> publicados en Ciudad 3D` : 'Datos publicados en Ciudad 3D'}.</div>
     <table class="wt kv">
       ${partidaC3d ? `<tr><th>Partida matriz</th><td class="num">${esc(partidaC3d)} ${state.cert.partida ? (partidaOk ? '<span class="ok-tx">✓ coincide</span>' : '<span class="bad-tx">≠ certificado</span>') : ''}</td></tr>` : ''}
       ${dato('superficie_total', 'Superficie del terreno', ' m²')}${dato('superficie_cubierta', 'Superficie cubierta', ' m²')}
