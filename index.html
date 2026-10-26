@@ -893,6 +893,30 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 .vchip.warn,.vchip.faltan{color:var(--warn); background:var(--warn-soft); border-color:transparent}
 .vchip.off,.vchip.load{color:var(--muted); background:transparent; border-color:var(--line)}
 
+/* ---- Celular ---- */
+.leaflet-control-layers-toggle,.leaflet-retina .leaflet-control-layers-toggle{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e73d1e' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M12 3 2 8l10 5 10-5-10-5Z'/%3E%3Cpath d='m2 13 10 5 10-5'/%3E%3Cpath d='m2 17.5 10 5 10-5'/%3E%3C/svg%3E"); background-size:22px 22px; background-repeat:no-repeat; background-position:center}
+@media (max-width:620px){
+  .wrap{padding-inline:12px}
+  .hero{padding:22px 16px 20px!important; gap:10px!important; margin:12px 0 18px!important}
+  .hero .chip{font-size:10px; padding:2px 6px}
+  .hero h1{font-size:25px}
+  .hero .lead{font-size:13.5px}
+  .hero .how{display:none}
+  .panel h2{flex-wrap:wrap; row-gap:6px}
+  .panel h2 .legend{width:100%; font-size:10.5px; gap:4px 10px}
+  #mapa{height:340px}
+  .ficha{padding:16px}
+  .dl .btn{width:100%}
+}
+
+.mismatch{border:1.5px solid var(--bad); background:var(--bad-soft); border-radius:8px; padding:14px 16px; display:grid; gap:8px}
+.mismatch .mm-h{font-family:var(--f-display); font-weight:900; font-size:16px; color:var(--bad)}
+.mismatch p{margin:0; font-size:13px}
+.mismatch .wt{font-size:13px} .mismatch .wt th{width:62%}
+.mismatch details summary{cursor:pointer; font-size:12.5px; font-weight:600; color:var(--accent)}
+.drop.mis{border-color:var(--bad); border-style:solid}
+.drop.mis small{color:var(--bad)}
+
 .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
 @media (max-width:520px){ .grid3{grid-template-columns:1fr 1fr} .uc-row{grid-template-columns:62px 1fr 30px 52px 30px 24px} }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
@@ -988,6 +1012,7 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
           <span><b>Certificado de Empadronamiento</b><small id="sPdf">Arrastrá el PDF de AGIP o hacé clic para elegirlo</small></span>
         </label>
       </div>
+      <div class="mismatch" id="mismatch" role="alert" hidden></div>
       <p class="hint" id="upHint">El DXF debe respetar los niveles de información de Detalle_Layers_Bloques v4. Los archivos se procesan en tu navegador y no se envían a ningún servidor. <button class="link-btn" id="bEjemplo" type="button">Ver un ejemplo resuelto (Bogotá 3922)</button></p>
       <p class="hint" id="manualHint" hidden>¿El certificado es un escaneo y no se pudo leer? <button class="link-btn" id="bManual" type="button">Cargar los datos a mano</button></p>
     </div>
@@ -1696,12 +1721,47 @@ function salirEjemplo(){
   Object.assign(state, { dxf:null, dxfName:'', cert:CERT_VACIO(), certOk:false, manual:false, ejemplo:false });
   setDrop($('dropDxf'), $('sDxf'), '', TXT_DXF); setDrop($('dropPdf'), $('sPdf'), '', TXT_PDF);
 }
+
+// Aviso cuando el DXF y el certificado son de parcelas distintas: se detiene el análisis
+function avisoParcelaDistinta(mostrar){
+  const box = $('mismatch');
+  ['dropDxf', 'dropPdf'].forEach(id => $(id).classList.toggle('mis', mostrar));
+  if (!mostrar){ box.hidden = true; box.innerHTML = ''; return; }
+  const N = Engine.nomenclatura(state.dxf, state.cert);
+  const smpDxf = N.dxf ? N.dxf.nombre : '—';
+  const smpCert = Engine.smpFormato(N.cert, true);
+  const enfocado = document.activeElement && document.activeElement.closest && document.activeElement.closest('#mismatch') ? document.activeElement.id : null;
+  box.hidden = false;
+  box.innerHTML = `
+    <div class="mm-h">Los archivos no corresponden a la misma parcela</div>
+    <p>El archivo de relevamiento y el certificado de empadronamiento tienen nomenclaturas distintas, por eso no se realizó el análisis. Subí el DXF o el certificado que corresponda a la misma parcela para continuar.</p>
+    <table class="wt kv">
+      <tr><th>Archivo de relevamiento <span class="muted">(pestaña del layout)</span></th><td class="num">${esc(smpDxf)}</td></tr>
+      <tr><th>Certificado de empadronamiento</th><td class="num">${esc(smpCert)}</td></tr>
+    </table>
+    <details id="mmEdit"${enfocado ? ' open' : ''}>
+      <summary>¿El certificado se leyó mal? Corregí su nomenclatura</summary>
+      <div class="grid3" style="margin-top:8px">
+        <label class="f">Sección<input class="t" id="mSec" value="${esc(state.cert.seccion)}"></label>
+        <label class="f">Manzana<input class="t" id="mMza" value="${esc(state.cert.manzana)}"></label>
+        <label class="f">Parcela<input class="t" id="mPar" value="${esc(state.cert.parcela)}"></label>
+      </div>
+    </details>`;
+  [['mSec', 'seccion'], ['mMza', 'manzana'], ['mPar', 'parcela']].forEach(([id, k]) => {
+    $(id).addEventListener('change', e => { state.cert[k] = e.target.value.trim(); actualizar(); });
+  });
+  if (enfocado && $(enfocado)) $(enfocado).focus();
+}
+
 // Muestra las secciones de resultados sólo cuando está toda la documentación
 function actualizar(){
-  const listo = !!state.dxf && (state.certOk || state.manual);
+  const cargado = !!state.dxf && (state.certOk || state.manual);
+  const nomDistinta = cargado && Engine.nomenclatura(state.dxf, state.cert).estado === 'bad';
+  avisoParcelaDistinta(nomDistinta);
+  const listo = cargado && !nomDistinta;
   $('bReset').hidden = !(state.dxf || state.certOk || state.ejemplo || state.manual);
   $('upHint').hidden = !!(state.dxf || state.certOk);
-  $('manualHint').hidden = !(state.dxf && !state.certOk && !state.manual);
+  $('manualHint').hidden = !(state.dxf && !state.certOk && !state.manual) || nomDistinta;
   $('results').hidden = !listo;
   if (listo){ llenarForm(); render(); }
   if (state.manual) $('certEdit').open = true;
@@ -2195,7 +2255,7 @@ function dibujarMapa(){
     Object.assign(overlays, { 'Manzana (DXF)': g.mza, 'Mensura (DXF)': g.par });
   }
   ['mza', 'c3d', 'par'].forEach(k => g[k] && g[k].addTo(mapa));
-  capas = { grupos: Object.values(g), ctl: L.control.layers(mapa._base, overlays, { collapsed: false, position: 'topright' }).addTo(mapa) };
+  capas = { grupos: Object.values(g), ctl: L.control.layers(mapa._base, overlays, { collapsed: window.innerWidth < 700, position: 'topright' }).addTo(mapa) };
   const b = L.latLngBounds([]);
   const add = grp => grp && grp.eachLayer(l => b.extend(l.getBounds()));
   add(g.mza); if (!b.isValid()) { add(g.par); add(g.c3d); }
