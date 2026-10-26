@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Informe de excedente fiscal y tolerancia superficial para CEP en CABA: compara el DXF de relevamiento con el título y el certificado de AGIP.">
+<meta name="description" content="Informe de excedente fiscal y tolerancia superficial para CEP en CABA: compara el DXF de relevamiento con el título, el certificado de AGIP y Ciudad 3D.">
 <title>Excedente y Tolerancia CEP</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -11,6 +11,669 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<style id="leaflet-css">/* required styles */
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.leaflet-container {
+	overflow: hidden;
+	}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	  -webkit-user-drag: none;
+	}
+/* Prevents IE11 from highlighting tiles in blue */
+.leaflet-tile::selection {
+	background: transparent;
+}
+/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
+.leaflet-safari .leaflet-tile {
+	image-rendering: -webkit-optimize-contrast;
+	}
+/* hack that prevents hw layers "stretching" when loading new tiles */
+.leaflet-safari .leaflet-tile-container {
+	width: 1600px;
+	height: 1600px;
+	-webkit-transform-origin: 0 0;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	display: block;
+	}
+/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
+/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
+.leaflet-container .leaflet-overlay-pane svg {
+	max-width: none !important;
+	max-height: none !important;
+	}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+	max-width: none !important;
+	max-height: none !important;
+	width: auto;
+	padding: 0;
+	}
+
+.leaflet-container img.leaflet-tile {
+	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
+	mix-blend-mode: plus-lighter;
+}
+
+.leaflet-container.leaflet-touch-zoom {
+	-ms-touch-action: pan-x pan-y;
+	touch-action: pan-x pan-y;
+	}
+.leaflet-container.leaflet-touch-drag {
+	-ms-touch-action: pinch-zoom;
+	/* Fallback for FF which doesn't support pinch-zoom */
+	touch-action: none;
+	touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+	-ms-touch-action: none;
+	touch-action: none;
+}
+.leaflet-container {
+	-webkit-tap-highlight-color: transparent;
+}
+.leaflet-container a {
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
+}
+.leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	z-index: 800;
+	}
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
+.leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+
+.leaflet-pane         { z-index: 400; }
+
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane   { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+
+.leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	behavior: url(#default#VML);
+	display: inline-block;
+	position: absolute;
+	}
+
+
+/* control positioning */
+
+.leaflet-control {
+	position: relative;
+	z-index: 800;
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+.leaflet-top,
+.leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.leaflet-top {
+	top: 0;
+	}
+.leaflet-right {
+	right: 0;
+	}
+.leaflet-bottom {
+	bottom: 0;
+	}
+.leaflet-left {
+	left: 0;
+	}
+.leaflet-control {
+	float: left;
+	clear: both;
+	}
+.leaflet-right .leaflet-control {
+	float: right;
+	}
+.leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+
+
+/* zoom and fade animations */
+
+.leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+.leaflet-zoom-animated {
+	-webkit-transform-origin: 0 0;
+	    -ms-transform-origin: 0 0;
+	        transform-origin: 0 0;
+	}
+svg.leaflet-zoom-animated {
+	will-change: transform;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	        transition: none;
+	}
+
+.leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+
+
+/* cursors */
+
+.leaflet-interactive {
+	cursor: pointer;
+	}
+.leaflet-grab {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	cursor:         grab;
+	}
+.leaflet-crosshair,
+.leaflet-crosshair .leaflet-interactive {
+	cursor: crosshair;
+	}
+.leaflet-popup-pane,
+.leaflet-control {
+	cursor: auto;
+	}
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	cursor:         grabbing;
+	}
+
+/* marker & overlays interactivity */
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-image-layer,
+.leaflet-pane > svg path,
+.leaflet-tile-container {
+	pointer-events: none;
+	}
+
+.leaflet-marker-icon.leaflet-interactive,
+.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,
+svg.leaflet-image-layer.leaflet-interactive path {
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+
+/* visual tweaks */
+
+.leaflet-container {
+	background: #ddd;
+	outline-offset: 1px;
+	}
+.leaflet-container a {
+	color: #0078A8;
+	}
+.leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+
+
+/* general typography */
+.leaflet-container {
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	}
+
+
+/* general toolbar styles */
+
+.leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.leaflet-bar a {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.leaflet-bar a,
+.leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+	background-color: #f4f4f4;
+	}
+.leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+
+.leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+.leaflet-touch .leaflet-bar a:first-child {
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	}
+.leaflet-touch .leaflet-bar a:last-child {
+	border-bottom-left-radius: 2px;
+	border-bottom-right-radius: 2px;
+	}
+
+/* zoom control */
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
+	font-size: 22px;
+	}
+
+
+/* layers control */
+
+.leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.leaflet-control-layers-toggle {
+	background-image: url(images/layers.png);
+	width: 36px;
+	height: 36px;
+	}
+.leaflet-retina .leaflet-control-layers-toggle {
+	background-image: url(images/layers-2x.png);
+	background-size: 26px 26px;
+	}
+.leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.leaflet-control-layers .leaflet-control-layers-list,
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.leaflet-control-layers-scrollbar {
+	overflow-y: scroll;
+	overflow-x: hidden;
+	padding-right: 5px;
+	}
+.leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.leaflet-control-layers label {
+	display: block;
+	font-size: 13px;
+	font-size: 1.08333em;
+	}
+.leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+
+/* Default icon URLs */
+.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */
+	background-image: url(images/marker-icon.png);
+	}
+
+
+/* attribution and scale controls */
+
+.leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.8);
+	margin: 0;
+	}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	line-height: 1.4;
+	}
+.leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.leaflet-control-attribution a:hover,
+.leaflet-control-attribution a:focus {
+	text-decoration: underline;
+	}
+.leaflet-attribution-flag {
+	display: inline !important;
+	vertical-align: baseline !important;
+	width: 1em;
+	height: 0.6669em;
+	}
+.leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	white-space: nowrap;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.8);
+	text-shadow: 1px 1px #fff;
+	}
+.leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+
+.leaflet-touch .leaflet-control-attribution,
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+
+
+/* popup */
+
+.leaflet-popup {
+	position: absolute;
+	text-align: center;
+	margin-bottom: 20px;
+	}
+.leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.leaflet-popup-content {
+	margin: 13px 24px 13px 20px;
+	line-height: 1.3;
+	font-size: 13px;
+	font-size: 1.08333em;
+	min-height: 1px;
+	}
+.leaflet-popup-content p {
+	margin: 17px 0;
+	margin: 1.3em 0;
+	}
+.leaflet-popup-tip-container {
+	width: 40px;
+	height: 20px;
+	position: absolute;
+	left: 50%;
+	margin-top: -1px;
+	margin-left: -20px;
+	overflow: hidden;
+	pointer-events: none;
+	}
+.leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+
+	margin: -10px auto 0;
+	pointer-events: auto;
+
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: white;
+	color: #333;
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: none;
+	text-align: center;
+	width: 24px;
+	height: 24px;
+	font: 16px/24px Tahoma, Verdana, sans-serif;
+	color: #757575;
+	text-decoration: none;
+	background: transparent;
+	}
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+	color: #585858;
+	}
+.leaflet-popup-scrolled {
+	overflow: auto;
+	}
+
+.leaflet-oldie .leaflet-popup-content-wrapper {
+	-ms-zoom: 1;
+	}
+.leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+
+.leaflet-oldie .leaflet-control-zoom,
+.leaflet-oldie .leaflet-control-layers,
+.leaflet-oldie .leaflet-popup-content-wrapper,
+.leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+
+
+/* div icon */
+
+.leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+
+
+/* Tooltip */
+/* Base styles for the element that has a tooltip */
+.leaflet-tooltip {
+	position: absolute;
+	padding: 6px;
+	background-color: #fff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	color: #222;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	}
+.leaflet-tooltip.leaflet-interactive {
+	cursor: pointer;
+	pointer-events: auto;
+	}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	position: absolute;
+	pointer-events: none;
+	border: 6px solid transparent;
+	background: transparent;
+	content: "";
+	}
+
+/* Directions */
+
+.leaflet-tooltip-bottom {
+	margin-top: 6px;
+}
+.leaflet-tooltip-top {
+	margin-top: -6px;
+}
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-top:before {
+	left: 50%;
+	margin-left: -6px;
+	}
+.leaflet-tooltip-top:before {
+	bottom: 0;
+	margin-bottom: -12px;
+	border-top-color: #fff;
+	}
+.leaflet-tooltip-bottom:before {
+	top: 0;
+	margin-top: -12px;
+	margin-left: -6px;
+	border-bottom-color: #fff;
+	}
+.leaflet-tooltip-left {
+	margin-left: -6px;
+}
+.leaflet-tooltip-right {
+	margin-left: 6px;
+}
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	top: 50%;
+	margin-top: -6px;
+	}
+.leaflet-tooltip-left:before {
+	right: 0;
+	margin-right: -12px;
+	border-left-color: #fff;
+	}
+.leaflet-tooltip-right:before {
+	left: 0;
+	margin-left: -12px;
+	border-right-color: #fff;
+	}
+
+/* Printing */
+
+@media print {
+	/* Prevent printers from removing background-images of controls. */
+	.leaflet-control {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
+	}
+</style>
 <style>
 :root{
   --bg:#fbf5f2; --surface:#ffffff; --surface-2:#fff7f3; --ink:#2a1d18; --muted:#7a625a; --line:#f3d9cc;
@@ -205,6 +868,28 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 .ficha{border-top:5px solid transparent; border-image:var(--grad) 1; border-image-slice:1 0 0 0}
 .agip{border-left:4px solid var(--accent)}
 
+/* ---- Nomenclatura y ubicación ---- */
+.panel .body.val-grid{display:grid; grid-template-columns:minmax(280px,400px) minmax(0,1fr); gap:20px; align-items:start}
+@media (max-width:900px){ .panel .body.val-grid{grid-template-columns:minmax(0,1fr)} }
+.vcard{background:var(--surface-2); border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:6px; padding:12px 14px; display:grid; gap:8px}
+.vcard .vh{display:flex; justify-content:space-between; align-items:center; gap:10px}
+.vcard .vh h3{margin:0; font-family:var(--f-display); font-size:14px; font-weight:700}
+.vcard .wt{font-size:12.5px} .vcard .wt th,.vcard .wt td{padding:5px 2px}
+.vcard p{margin:0; font-size:12.5px; color:var(--muted)}
+.vcard details{font-size:12px; color:var(--muted)}
+.vcard details summary{cursor:pointer; font-weight:600; color:var(--accent)}
+.vcard details ul{margin:6px 0 0; padding-left:16px; word-break:break-all}
+.mapbox{display:grid; gap:6px}
+#mapa{height:440px; border-radius:8px; border:1px solid var(--line); background:var(--surface-2); z-index:0}
+.map-off{height:100%; display:grid; place-items:center; text-align:center; padding:24px; color:var(--muted); font-size:13px}
+.leaflet-control-layers{font-family:var(--f-body); font-size:12px}
+.vchips{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px}
+.vchip{font-size:11.5px; font-weight:700; padding:3px 10px; border-radius:20px; border:1px solid}
+.vchip.ok{color:var(--ok); background:var(--ok-soft); border-color:transparent}
+.vchip.bad{color:var(--bad); background:var(--bad-soft); border-color:transparent}
+.vchip.warn,.vchip.faltan{color:var(--warn); background:var(--warn-soft); border-color:transparent}
+.vchip.off,.vchip.load{color:var(--muted); background:transparent; border-color:var(--line)}
+
 .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
 @media (max-width:520px){ .grid3{grid-template-columns:1fr 1fr} .uc-row{grid-template-columns:62px 1fr 30px 52px 30px 24px} }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
@@ -262,6 +947,10 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 .sheet tr.tot td{background:#fdf0ea; border-top:1.5px solid #e73d1e; border-bottom:1.5px solid #e73d1e}
 .sheet .note{border-left-color:#f79214}
 .sheet .verdict{border:1.5px solid #e9c3b3; border-radius:8px}
+.sheet table.val{margin-top:8px}
+.sheet table.val td{padding:4px 6px; vertical-align:middle}
+.sheet table.val td:first-child{font-weight:700; width:150px}
+.sheet table.val td:last-child{text-align:right; width:110px}
 @media print{ .sheet{box-shadow:none; width:auto; min-height:0; padding:0} @page{size:A4; margin:14mm} }
 </style>
 
@@ -273,7 +962,7 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
   <header class="hero">
     <div class="norma"><span class="chip">Art. 23 Ley 6.437</span><span class="chip">Título 5 Reglamento Técnico</span><span class="chip">Formato DXF Detalle Layers Bloques v4</span></div>
     <h1>Excedente fiscal y tolerancia superficial</h1>
-    <p class="lead">Para Constitución de Estado Parcelario en la Ciudad de Buenos Aires. Compara las superficies del archivo de relevamiento con el título de dominio y con el Certificado de Empadronamiento de AGIP, y genera el informe comparativo.</p>
+    <p class="lead">Para Constitución de Estado Parcelario en la Ciudad de Buenos Aires. Compara las superficies del archivo de relevamiento con el título de dominio y con el Certificado de Empadronamiento de AGIP, y genera el informe comparativo. También verifica la nomenclatura de la parcela y su ubicación en Ciudad 3D.</p>
     <ol class="how">
       <li><b>Terreno.</b> Mensura (09-M-PARCELA) contra Título (14-M-TITULO), según el art. 23 de la Ley 6.437: tolerancia del 5% con muros o del 1% sin cerramiento materializado.</li>
       <li><b>Edificado.</b> Superficies de las capas M-M-##-SUP, clasificadas por color, contra las unidades constructivas de AGIP, según el Título 5: tolerancia del 5%, 3% o 2%.</li>
@@ -304,8 +993,19 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
   <div id="results" hidden>
     <section class="panel ficha" id="ficha" aria-label="Identificación de la parcela"></section>
 
+    <section class="panel" aria-labelledby="hVal">
+      <h2 id="hVal"><span><span class="step">2</span>Nomenclatura y ubicación</span><span class="legend"><span><i style="background:#2f6fe0"></i>Ciudad 3D</span><span><i style="background:#e73d1e"></i>Mensura DXF</span><span><i style="background:#e0ac00"></i>Título DXF</span><span><i style="background:#8a94a3"></i>Manzana DXF</span></span></h2>
+      <div class="body val-grid">
+        <div class="stack">
+          <div class="vcard" id="vNom"></div>
+          <div class="vcard" id="vC3d"></div>
+        </div>
+        <div class="mapbox"><div id="mapa" role="region" aria-label="Mapa de la manzana"></div><p class="fine" id="mapNota"></p></div>
+      </div>
+    </section>
+
     <section class="panel" aria-labelledby="hTer">
-      <h2 id="hTer"><span><span class="step">2</span>Terreno · Mensura contra título</span><span class="legend"><span><i style="background:#2f5fd0"></i>Mensura</span><span><i style="background:#e0ac00"></i>Título</span></span></h2>
+      <h2 id="hTer"><span><span class="step">3</span>Terreno · Mensura contra título</span><span class="legend"><span><i style="background:#2f5fd0"></i>Mensura</span><span><i style="background:#e0ac00"></i>Título</span></span></h2>
       <div class="body split">
         <div id="planTerreno"></div>
         <div class="stack">
@@ -324,7 +1024,7 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
     </section>
 
     <section class="panel" aria-labelledby="hEd">
-      <h2 id="hEd"><span><span class="step">3</span>Superficie edificada · Relevamiento contra AGIP</span><span class="legend" id="legend"></span></h2>
+      <h2 id="hEd"><span><span class="step">4</span>Superficie edificada · Relevamiento contra AGIP</span><span class="legend" id="legend"></span></h2>
       <div class="body">
         <div class="plans" id="plans"></div>
         <div class="split2">
@@ -360,7 +1060,7 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
     </section>
 
     <section class="panel" aria-labelledby="hCon">
-      <h2 id="hCon"><span><span class="step">4</span>Conclusión</span></h2>
+      <h2 id="hCon"><span><span class="step">5</span>Conclusión</span></h2>
       <div class="body concl" id="conclusion"></div>
     </section>
 
@@ -424,6 +1124,7 @@ const Engine = (() => {
   function parseDxf(txt) {
     const P = pairs(txt);
     const layerColor = {};
+    const layouts = [];
     const ents = [];
     let section = null, i = 0;
     let cur = null, poly = null;
@@ -434,6 +1135,18 @@ const Engine = (() => {
       const [c, v] = P[i];
       if (c === 0 && v === 'SECTION') { flush(); section = P[i + 1] && P[i + 1][1]; i += 2; continue; }
       if (c === 0 && v === 'ENDSEC') { flush(); section = null; i++; continue; }
+
+      // Nombres de las pestañas de layout (OBJECTS > LAYOUT, código 1 luego de AcDbLayout)
+      if (section === 'OBJECTS' && c === 0 && v === 'LAYOUT') {
+        let enLayout = false, nombre = null; i++;
+        while (i < P.length && P[i][0] !== 0) {
+          if (P[i][0] === 100 && P[i][1].trim() === 'AcDbLayout') enLayout = true;
+          else if (enLayout && P[i][0] === 1 && nombre === null) nombre = P[i][1].trim();
+          i++;
+        }
+        if (nombre) layouts.push(nombre);
+        continue;
+      }
 
       if (section === 'TABLES' && c === 0 && v === 'LAYER') {
         let name = null, col = 7; i++;
@@ -470,8 +1183,8 @@ const Engine = (() => {
             else if (c === 62) tgt.color = parseInt(v, 10);
             else if (c === 67) tgt.ps = +v === 1;
             else if (c === 70) tgt.flags = parseInt(v, 10);
-            else if (c === 1 && (tgt.type === 'TEXT' || tgt.type === 'MTEXT')) tgt.text += v;
-            else if (c === 2 && tgt.type === 'INSERT') tgt.name = v.trim();
+            else if (c === 1 && (tgt.type === 'TEXT' || tgt.type === 'MTEXT' || tgt.type === 'ATTRIB')) tgt.text += v;
+            else if (c === 2 && (tgt.type === 'INSERT' || tgt.type === 'ATTRIB')) tgt.name = v.trim();
             else if (tgt.type === 'LWPOLYLINE') {
               if (c === 10) tgt.pts.push([+v, 0, 0]);
               else if (c === 20 && tgt.pts.length) tgt.pts[tgt.pts.length - 1][1] = +v;
@@ -495,7 +1208,13 @@ const Engine = (() => {
       e.layerU = (e.layer || '').toUpperCase();
       e.colorReal = (e.color === 256 || e.color === 0 || e.color == null) ? (layerColor[e.layerU] ?? 7) : Math.abs(e.color);
     }
-    return { ents: ents.filter(e => !e.ps && e.type !== 'VERTEX'), layerColor };
+    // Atributos de bloque: cada ATTRIB pertenece al INSERT que lo precede
+    let ultimoInsert = null;
+    for (const e of ents) {
+      if (e.type === 'INSERT') { ultimoInsert = e; e.attribs = []; }
+      else if (e.type === 'ATTRIB' && ultimoInsert) ultimoInsert.attribs.push({ tag: e.name.toUpperCase(), valor: e.text.trim() });
+    }
+    return { ents: ents.filter(e => !e.ps && e.type !== 'VERTEX' && e.type !== 'ATTRIB'), layerColor, layouts };
   }
 
   // ---------- Geometría ----------
@@ -542,7 +1261,7 @@ const Engine = (() => {
 
   // ---------- Análisis del DXF ----------
   function analizar(buf) {
-    const { ents } = parseDxf(decode(buf));
+    const { ents, layouts } = parseDxf(decode(buf));
     const avisos = [];
     const poly = e => ({ layer: e.layerU, color: e.colorReal, area: Math.abs(signedArea(e.pts)), arco: e.pts.some(p => p[2]), cerrado: !!(e.flags & 1), dib: flatten(e.pts) });
 
@@ -563,11 +1282,13 @@ const Engine = (() => {
     const texto = ents.filter(e => e.type === 'TEXT' || e.type === 'MTEXT');
     const numPuerta = texto.filter(e => e.layerU === '06-M-NUMERO-DE-PUERTA').map(e => e.text.trim());
     const calles = texto.filter(e => e.layerU === '05-M-NOMBRE-DE-CALLE').map(e => e.text.trim());
-    const nparc = null;
+    const nparc = ents.filter(e => e.type === 'INSERT' && /PARCELA_SURGENTE/i.test(e.name))
+      .flatMap(e => (e.attribs || []).filter(a => a.tag === 'NPARC').map(a => a.valor)).filter(Boolean);
 
     return {
       parcela, titulo, excedente, excedenteN, sup, murosN, avisos, numPuerta, calles,
       manzana: polys.filter(p => p.layer === '07-M-MANZANA'),
+      layouts: layouts.filter(n => !/^model$/i.test(n)), nparc,
     };
   }
 
@@ -640,12 +1361,49 @@ const Engine = (() => {
     };
   }
 
+  // ---------- Nomenclatura catastral (Sección-Manzana-Parcela) ----------
+  // Parte con número y letra opcional: "092" → {n:92, l:''}, "001b" → {n:1, l:'B'}
+  function parte(s) {
+    const m = String(s ?? '').trim().match(/^0*(\d{1,3})\s*([A-Za-z]{0,2})$/);
+    return m ? { n: +m[1], l: m[2].toUpperCase() } : null;
+  }
+  function smpDesdeTexto(s) {
+    const m = String(s ?? '').trim().match(/^(\d{1,3})\s*[-_ ]\s*(\d{1,3}\s*[A-Za-z]?)\s*[-_ ]\s*(\d{1,3}\s*[A-Za-z]{0,2})$/);
+    if (!m) return null;
+    const sec = parte(m[1]), mza = parte(m[2]), par = parte(m[3]);
+    return sec && mza && par ? { sec, mza, par } : null;
+  }
+  function smpDesdeCert(c) {
+    const sec = parte(c.seccion), mza = parte(c.manzana), par = parte(c.parcela);
+    return sec && mza && par ? { sec, mza, par } : null;
+  }
+  const clave = s => s ? `${s.sec.n}${s.sec.l}-${s.mza.n}${s.mza.l}-${s.par.n}${s.par.l}` : '';
+  const p3 = (p, minus) => String(p.n).padStart(3, '0') + (minus ? p.l.toLowerCase() : p.l);
+  // Formato de la pestaña: SSS-MMM-PPP (letra de parcela en minúscula); formato API: letras en mayúscula
+  const smpFormato = (s, api) => s ? `${p3(s.sec)}-${p3(s.mza)}-${p3(s.par, !api)}` : '';
+
+  function nomenclatura(dxf, cert) {
+    const enCert = smpDesdeCert(cert || {});
+    const pestañas = (dxf.layouts || []).map(nombre => ({ nombre, smp: smpDesdeTexto(nombre) }));
+    const conSmp = pestañas.filter(p => p.smp);
+    const nparc = (dxf.nparc || []).map(v => ({ valor: v, p: parte(v) }));
+    const r = { cert: enCert, pestañas, conSmp, nparc };
+    if (!enCert) return { ...r, estado: 'faltan', texto: 'Faltan sección, manzana o parcela en el certificado' };
+    if (!pestañas.length) return { ...r, estado: 'warn', texto: 'El DXF no tiene pestañas de layout' };
+    if (!conSmp.length) return { ...r, estado: 'warn', texto: `La pestaña «${pestañas[0].nombre}» no tiene el formato SSS-MMM-PPP` };
+    const coincide = conSmp.find(p => clave(p.smp) === clave(enCert));
+    const nparcMal = nparc.filter(x => !x.p || x.p.n !== enCert.par.n || x.p.l !== enCert.par.l);
+    if (!coincide) return { ...r, estado: 'bad', texto: 'La nomenclatura del DXF no coincide con el certificado', dxf: conSmp[0] };
+    if (nparcMal.length) return { ...r, estado: 'warn', texto: `La pestaña coincide, pero el bloque PARCELA_SURGENTE dice «${nparcMal[0].valor}»`, dxf: coincide };
+    return { ...r, estado: 'ok', texto: 'Coincide con el certificado', dxf: coincide };
+  }
+
   function fmt(x, d = 2) {
     if (x == null || isNaN(x)) return '—';
     return Number(x).toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d });
   }
 
-  return { analizar, calcular, fmt, signedArea, flatten, COLORES, CAPA, NOMBRE_PLANTA, tsTitulo5 };
+  return { analizar, calcular, fmt, signedArea, flatten, COLORES, CAPA, NOMBRE_PLANTA, tsTitulo5, nomenclatura, smpDesdeTexto, smpDesdeCert, smpFormato, clave };
 })();
 if (typeof module !== 'undefined') module.exports = Engine;
 </script>
@@ -731,8 +1489,189 @@ const Cert = (() => {
 })();
 if (typeof module !== 'undefined') module.exports = Cert;
 </script>
+<script>/* ===== Coordenadas: CABA 2019 (EPSG:9498), Gauss-Krüger BA (USIG) y WGS84 ===== */
+const Geo = (() => {
+  const RAD = Math.PI / 180;
+  const elip = (a, f) => { const e2 = f * (2 - f); return { a, e2, ep2: e2 / (1 - e2) }; };
+  const WGS84 = elip(6378137, 1 / 298.257223563);
+  const INTL = elip(6378388, 1 / 297);
+  // Sistemas de proyección Transversa Mercator
+  const CABA2019 = { el: WGS84, lat0: -34.6292666666667, lon0: -58.4633083333333, k0: 1, fe: 20000, fn: 70000 };
+  const GKBA = { el: INTL, lat0: -34.629269, lon0: -58.4633, k0: 0.999998, fe: 100000, fn: 100000, towgs84: [-148, 136, 90] };
+
+  function M(el, phi) {
+    const e2 = el.e2, e4 = e2 * e2, e6 = e4 * e2;
+    return el.a * ((1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * phi - (3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024) * Math.sin(2 * phi)
+      + (15 * e4 / 256 + 45 * e6 / 1024) * Math.sin(4 * phi) - (35 * e6 / 3072) * Math.sin(6 * phi));
+  }
+  // Directa: (lon, lat) en grados → (x, y) en metros
+  function tmDirecta(s, lon, lat) {
+    const { el, k0 } = s, phi = lat * RAD, s2 = Math.sin(phi) ** 2;
+    const N = el.a / Math.sqrt(1 - el.e2 * s2), T = Math.tan(phi) ** 2, C = el.ep2 * Math.cos(phi) ** 2;
+    const A = (lon - s.lon0) * RAD * Math.cos(phi), ep2 = el.ep2;
+    const x = s.fe + k0 * N * (A + (1 - T + C) * A ** 3 / 6 + (5 - 18 * T + T * T + 72 * C - 58 * ep2) * A ** 5 / 120);
+    const y = s.fn + k0 * (M(el, phi) - M(el, s.lat0 * RAD) + N * Math.tan(phi) * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A ** 4 / 24
+      + (61 - 58 * T + T * T + 600 * C - 330 * ep2) * A ** 6 / 720));
+    return [x, y];
+  }
+  // Inversa: (x, y) en metros → (lon, lat) en grados
+  function tmInversa(s, x, y) {
+    const { el, k0 } = s, e2 = el.e2, e4 = e2 * e2, e6 = e4 * e2, ep2 = el.ep2;
+    const m = M(el, s.lat0 * RAD) + (y - s.fn) / k0;
+    const mu = m / (el.a * (1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256));
+    const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+    const p1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * Math.sin(2 * mu) + (21 * e1 * e1 / 16 - 55 * e1 ** 4 / 32) * Math.sin(4 * mu)
+      + (151 * e1 ** 3 / 96) * Math.sin(6 * mu) + (1097 * e1 ** 4 / 512) * Math.sin(8 * mu);
+    const s2 = Math.sin(p1) ** 2, C1 = ep2 * Math.cos(p1) ** 2, T1 = Math.tan(p1) ** 2;
+    const N1 = el.a / Math.sqrt(1 - e2 * s2), R1 = el.a * (1 - e2) / Math.pow(1 - e2 * s2, 1.5), D = (x - s.fe) / (N1 * k0);
+    const phi = p1 - (N1 * Math.tan(p1) / R1) * (D * D / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * ep2) * D ** 4 / 24
+      + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * ep2 - 3 * C1 * C1) * D ** 6 / 720);
+    const lam = (D - (1 + 2 * T1 + C1) * D ** 3 / 6 + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * ep2 + 24 * T1 * T1) * D ** 5 / 120) / Math.cos(p1);
+    return [s.lon0 + lam / RAD, phi / RAD];
+  }
+  // Cambio de datum por 3 parámetros (Campo Inchauspe → WGS84)
+  function aWGS84(el, lon, lat, d) {
+    const phi = lat * RAD, lam = lon * RAD, N = el.a / Math.sqrt(1 - el.e2 * Math.sin(phi) ** 2);
+    const X = N * Math.cos(phi) * Math.cos(lam) + d[0], Y = N * Math.cos(phi) * Math.sin(lam) + d[1], Z = N * (1 - el.e2) * Math.sin(phi) + d[2];
+    const w = WGS84, p = Math.hypot(X, Y);
+    let la = Math.atan2(Z, p * (1 - w.e2));
+    for (let k = 0; k < 6; k++) { const n = w.a / Math.sqrt(1 - w.e2 * Math.sin(la) ** 2); const h = p / Math.cos(la) - n; la = Math.atan2(Z, p * (1 - w.e2 * n / (n + h))); }
+    return [Math.atan2(Y, X) / RAD, la / RAD];
+  }
+
+  const cabaALonLat = ([x, y]) => tmInversa(CABA2019, x, y);
+  const lonLatACaba = ([lon, lat]) => tmDirecta(CABA2019, lon, lat);
+  const gkbaALonLat = ([x, y]) => { const [lo, la] = tmInversa(GKBA, x, y); return aWGS84(GKBA.el, lo, la, GKBA.towgs84); };
+
+  // Reconoce el sistema de un par de coordenadas dentro de la Ciudad
+  function sistema([x, y]) {
+    if (x > -59.5 && x < -57.5 && y > -35.5 && y < -33.5) return 'wgs84';
+    if (x > 0 && x < 40000 && y > 50000 && y < 90000) return 'caba2019';
+    if (x > 80000 && x < 120000 && y > 80000 && y < 120000) return 'gkba';
+    return null;
+  }
+  function aLonLat(p) {
+    const s = sistema(p);
+    return s === 'wgs84' ? [p[0], p[1]] : s === 'caba2019' ? cabaALonLat(p) : s === 'gkba' ? gkbaALonLat(p) : null;
+  }
+  return { cabaALonLat, lonLatACaba, gkbaALonLat, sistema, aLonLat };
+})();
+if (typeof module !== 'undefined') module.exports = Geo;
+</script>
+<script>/* ===== Ciudad 3D: consulta al servicio de catastro del GCBA (EPOK) y comparación con el DXF ===== */
+const Ciudad3D = (() => {
+  const BASE = 'https://epok.buenosaires.gob.ar/catastro';
+
+  async function getJSON(url, ms = 15000) {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+    try {
+      const r = await fetch(url, { signal: ctl.signal });
+      const txt = await r.text();
+      let data = null; try { data = JSON.parse(txt); } catch (e) { data = null; }
+      return { ok: r.ok, status: r.status, data };
+    } finally { clearTimeout(t); }
+  }
+  const tieneDatos = d => d && typeof d === 'object' && !d.error && !d.errores && !(Array.isArray(d) && !d.length) && Object.keys(d).length > 0;
+
+  // Normaliza cualquier GeoJSON (FeatureCollection, Feature, Polygon, MultiPolygon) o WKT a polígonos de anillos [lon, lat]
+  function poligonos(g) {
+    if (!g) return [];
+    if (typeof g === 'string') {
+      const out = [];
+      for (const m of g.matchAll(/\(\(([^()]+)\)\)/g)) out.push([m[1].split(',').map(p => p.trim().split(/\s+/).map(Number))]);
+      return conv(out);
+    }
+    if (g.type === 'FeatureCollection') return (g.features || []).flatMap(f => poligonos(f));
+    if (g.type === 'Feature') return poligonos(g.geometry);
+    if (g.geometry) return poligonos(g.geometry);
+    if (g.type === 'Polygon') return conv([g.coordinates]);
+    if (g.type === 'MultiPolygon') return conv(g.coordinates);
+    if (g.type === 'GeometryCollection') return (g.geometries || []).flatMap(poligonos);
+    return [];
+  }
+  function conv(polys) {
+    return polys.map(rings => rings.map(ring => ring.map(p => Geo.aLonLat(p)).filter(Boolean))).filter(r => r[0] && r[0].length >= 3);
+  }
+
+  async function consultar(variantes) {
+    const log = [];
+    let parcela = null, usado = null;
+    for (const v of variantes) {
+      const url = `${BASE}/parcela/?smp=${encodeURIComponent(v)}`;
+      try {
+        const r = await getJSON(url);
+        log.push({ url, status: r.status });
+        if (r.ok && tieneDatos(r.data)) { parcela = r.data; usado = v; break; }
+      } catch (e) {
+        log.push({ url, status: e.name === 'AbortError' ? 'sin respuesta' : 'bloqueado' });
+        return { estado: 'error', log, texto: 'No se pudo consultar Ciudad 3D' };
+      }
+    }
+    if (!parcela) return { estado: 'no', log, texto: 'La parcela no figura en Ciudad 3D' };
+    let polys = [];
+    const urlG = `${BASE}/geometria/?smp=${encodeURIComponent(usado)}`;
+    try {
+      const r = await getJSON(urlG);
+      log.push({ url: urlG, status: r.status });
+      if (r.ok) polys = poligonos(r.data);
+    } catch (e) { log.push({ url: urlG, status: 'bloqueado' }); }
+    if (!polys.length && parcela.geometria) polys = poligonos(parcela.geometria);
+    return { estado: 'si', smp: usado, parcela, polys, log };
+  }
+
+  // ---------- Comparación en metros (coordenadas CABA 2019) ----------
+  function area(r) { let s = 0; for (let i = 0; i < r.length; i++) { const [x1, y1] = r[i], [x2, y2] = r[(i + 1) % r.length]; s += x1 * y2 - x2 * y1; } return s / 2; }
+  function centroide(r) {
+    let a = 0, cx = 0, cy = 0;
+    for (let i = 0; i < r.length; i++) { const [x1, y1] = r[i], [x2, y2] = r[(i + 1) % r.length]; const f = x1 * y2 - x2 * y1; a += f; cx += (x1 + x2) * f; cy += (y1 + y2) * f; }
+    return a ? [cx / (3 * a), cy / (3 * a)] : r[0];
+  }
+  function dentro([x, y], r) {
+    let c = false;
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const [xi, yi] = r[i], [xj, yj] = r[j];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  }
+  const enPoly = (p, rings) => dentro(p, rings[0]) && !rings.slice(1).some(h => dentro(p, h));
+
+  // dxfRings: anillos de la parcela del DXF en CABA 2019; c3dPolys: polígonos de Ciudad 3D en [lon, lat]
+  function comparar(dxfRings, c3dPolys) {
+    const B = c3dPolys.map(rings => rings.map(r => r.map(Geo.lonLatACaba)));
+    const A = dxfRings;
+    const areaA = A.reduce((s, r) => s + Math.abs(area(r)), 0);
+    const areaB = B.reduce((s, rings) => s + Math.abs(area(rings[0])) - rings.slice(1).reduce((h, r) => h + Math.abs(area(r)), 0), 0);
+    const cA = centroide(A[0]), cB = centroide(B[0][0]);
+    // Superposición por muestreo en grilla (precisión ~1%)
+    const pts = [...A.flat(), ...B.flat(2)];
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const n = 180, dx = (x1 - x0) / n, dy = (y1 - y0) / n;
+    let inA = 0, inB = 0, ambos = 0;
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const p = [x0 + (i + .5) * dx, y0 + (j + .5) * dy];
+      const a = A.some(r => dentro(p, r)), b = B.some(rings => enPoly(p, rings));
+      if (a) inA++; if (b) inB++; if (a && b) ambos++;
+    }
+    const union = inA + inB - ambos;
+    return { areaDxf: areaA, areaC3d: areaB, desplazamiento: Math.hypot(cA[0] - cB[0], cA[1] - cB[1]), superposicion: union ? ambos / union : 0 };
+  }
+
+  // Criterio por desplazamiento del centroide: hasta 1 m coincide; hasta 3 m coincide con diferencias
+  const UMBRAL = { ok: 1, warn: 3 };
+  function evaluar(c) {
+    if (c.desplazamiento <= UMBRAL.ok) return { estado: 'ok', texto: 'Coincide con Ciudad 3D' };
+    if (c.desplazamiento <= UMBRAL.warn) return { estado: 'warn', texto: 'Coincide con diferencias' };
+    return { estado: 'bad', texto: 'No coincide con Ciudad 3D' };
+  }
+
+  return { consultar, comparar, evaluar, poligonos, UMBRAL, BASE };
+})();
+if (typeof module !== 'undefined') module.exports = Ciudad3D;
+</script>
 <script>
-const SAMPLE_DXF = {"parcela":[{"layer":"09-M-PARCELA","color":5,"area":141.8883193731308,"arco":false,"cerrado":true,"dib":[[18167.44,69831.2],[18161.89,69846.58],[18153.66,69844.04],[18159.28,69828.41]]}],"titulo":[{"layer":"14-M-TITULO","color":2,"area":142.53187775611877,"arco":false,"cerrado":true,"dib":[[18153.62,69844.03],[18159.22,69828.44],[18167.44,69831.14],[18161.89,69846.58]]}],"excedente":[],"excedenteN":0,"sup":[{"layer":"M-M-PB-SUP","color":1,"area":111.66646207856597,"arco":true,"cerrado":true,"dib":[[18160.11,69829.55],[18159.01,69829.16],[18153.66,69844.04],[18161.89,69846.58],[18165.84,69835.64],[18160.31,69833.64],[18161.01,69831.7],[18161.06,69831.58],[18161.1,69831.46],[18161.13,69831.34],[18161.15,69831.22],[18161.16,69831.09],[18161.16,69830.97],[18161.15,69830.85],[18161.13,69830.72],[18161.1,69830.6],[18161.06,69830.48],[18161.01,69830.37],[18160.95,69830.26],[18160.89,69830.15],[18160.81,69830.05],[18160.73,69829.96],[18160.64,69829.87],[18160.55,69829.79],[18160.44,69829.72],[18160.34,69829.65],[18160.22,69829.6]],"planta":"PB"},{"layer":"M-M-01P-SUP","color":3,"area":12.880000114440918,"arco":false,"cerrado":true,"dib":[[18162.38,69834.39],[18165.84,69835.64],[18164.65,69838.93],[18161.19,69837.68]],"planta":"01P"},{"layer":"M-M-01P-SUP","color":1,"area":88.96193671226501,"arco":false,"cerrado":true,"dib":[[18161.89,69846.58],[18164.65,69838.93],[18161.19,69837.68],[18162.38,69834.39],[18157.74,69832.72],[18153.66,69844.04]],"planta":"01P"},{"layer":"M-M-01P-SUP","color":3,"area":9.824525490277185,"arco":true,"cerrado":true,"dib":[[18160.11,69829.55],[18159.01,69829.16],[18157.74,69832.72],[18160.31,69833.64],[18161.01,69831.7],[18161.06,69831.58],[18161.1,69831.46],[18161.13,69831.34],[18161.15,69831.22],[18161.16,69831.09],[18161.16,69830.97],[18161.15,69830.85],[18161.13,69830.72],[18161.1,69830.6],[18161.06,69830.48],[18161.01,69830.37],[18160.95,69830.26],[18160.89,69830.15],[18160.81,69830.05],[18160.73,69829.96],[18160.64,69829.87],[18160.55,69829.79],[18160.44,69829.72],[18160.34,69829.65],[18160.22,69829.6]],"planta":"01P"},{"layer":"M-M-PB-SUP","color":3,"area":30.221857413765974,"arco":true,"cerrado":true,"dib":[[18160.11,69829.55],[18160.22,69829.6],[18160.34,69829.65],[18160.44,69829.72],[18160.55,69829.79],[18160.64,69829.87],[18160.73,69829.96],[18160.81,69830.05],[18160.89,69830.15],[18160.95,69830.26],[18161.01,69830.37],[18161.06,69830.48],[18161.1,69830.6],[18161.13,69830.72],[18161.15,69830.85],[18161.16,69830.97],[18161.16,69831.09],[18161.15,69831.22],[18161.13,69831.34],[18161.1,69831.46],[18161.06,69831.58],[18161.01,69831.7],[18160.31,69833.64],[18165.84,69835.64],[18167.44,69831.2],[18159.28,69828.41],[18159.01,69829.16]],"planta":"PB"},{"layer":"M-M-02P-SUP","color":3,"area":71.34067499637604,"arco":false,"cerrado":true,"dib":[[18161.59,69836.57],[18161.19,69837.68],[18164.65,69838.93],[18161.89,69846.58],[18153.66,69844.04],[18154.78,69840.95],[18156.46,69841.56],[18156.98,69840.1],[18155.3,69839.49],[18156.55,69836.01],[18159.26,69836.99],[18159.66,69835.88]],"planta":"02P"},{"layer":"M-M-02P-SUP","color":1,"area":2.774500012397766,"arco":false,"cerrado":true,"dib":[[18154.78,69840.95],[18156.46,69841.56],[18156.98,69840.1],[18155.3,69839.49]],"planta":"02P"}],"murosN":10,"avisos":[],"numPuerta":["N° 3922"],"calles":["CHIVILCOY","BOGOTA","MERCEDES","BACACAY","BOGOTA"],"manzana":[{"layer":"07-M-MANZANA","color":7,"area":11096.656919002533,"arco":false,"cerrado":true,"dib":[[18070.72,69818.47],[18171.26,69849.47],[18209.17,69751.01],[18108.48,69719.76],[18070.72,69818.47]]}]};
+const SAMPLE_DXF = {"parcela":[{"layer":"09-M-PARCELA","color":5,"area":141.8883193731308,"arco":false,"cerrado":true,"dib":[[18167.44,69831.2],[18161.89,69846.58],[18153.66,69844.04],[18159.28,69828.41]]}],"titulo":[{"layer":"14-M-TITULO","color":2,"area":142.53187775611877,"arco":false,"cerrado":true,"dib":[[18153.62,69844.03],[18159.22,69828.44],[18167.44,69831.14],[18161.89,69846.58]]}],"excedente":[],"excedenteN":0,"sup":[{"layer":"M-M-PB-SUP","color":1,"area":111.66646207856597,"arco":true,"cerrado":true,"dib":[[18160.11,69829.55],[18159.01,69829.16],[18153.66,69844.04],[18161.89,69846.58],[18165.84,69835.64],[18160.31,69833.64],[18161.01,69831.7],[18161.06,69831.58],[18161.1,69831.46],[18161.13,69831.34],[18161.15,69831.22],[18161.16,69831.09],[18161.16,69830.97],[18161.15,69830.85],[18161.13,69830.72],[18161.1,69830.6],[18161.06,69830.48],[18161.01,69830.37],[18160.95,69830.26],[18160.89,69830.15],[18160.81,69830.05],[18160.73,69829.96],[18160.64,69829.87],[18160.55,69829.79],[18160.44,69829.72],[18160.34,69829.65],[18160.22,69829.6]],"planta":"PB"},{"layer":"M-M-01P-SUP","color":3,"area":12.880000114440918,"arco":false,"cerrado":true,"dib":[[18162.38,69834.39],[18165.84,69835.64],[18164.65,69838.93],[18161.19,69837.68]],"planta":"01P"},{"layer":"M-M-01P-SUP","color":1,"area":88.96193671226501,"arco":false,"cerrado":true,"dib":[[18161.89,69846.58],[18164.65,69838.93],[18161.19,69837.68],[18162.38,69834.39],[18157.74,69832.72],[18153.66,69844.04]],"planta":"01P"},{"layer":"M-M-01P-SUP","color":3,"area":9.824525490277185,"arco":true,"cerrado":true,"dib":[[18160.11,69829.55],[18159.01,69829.16],[18157.74,69832.72],[18160.31,69833.64],[18161.01,69831.7],[18161.06,69831.58],[18161.1,69831.46],[18161.13,69831.34],[18161.15,69831.22],[18161.16,69831.09],[18161.16,69830.97],[18161.15,69830.85],[18161.13,69830.72],[18161.1,69830.6],[18161.06,69830.48],[18161.01,69830.37],[18160.95,69830.26],[18160.89,69830.15],[18160.81,69830.05],[18160.73,69829.96],[18160.64,69829.87],[18160.55,69829.79],[18160.44,69829.72],[18160.34,69829.65],[18160.22,69829.6]],"planta":"01P"},{"layer":"M-M-PB-SUP","color":3,"area":30.221857413765974,"arco":true,"cerrado":true,"dib":[[18160.11,69829.55],[18160.22,69829.6],[18160.34,69829.65],[18160.44,69829.72],[18160.55,69829.79],[18160.64,69829.87],[18160.73,69829.96],[18160.81,69830.05],[18160.89,69830.15],[18160.95,69830.26],[18161.01,69830.37],[18161.06,69830.48],[18161.1,69830.6],[18161.13,69830.72],[18161.15,69830.85],[18161.16,69830.97],[18161.16,69831.09],[18161.15,69831.22],[18161.13,69831.34],[18161.1,69831.46],[18161.06,69831.58],[18161.01,69831.7],[18160.31,69833.64],[18165.84,69835.64],[18167.44,69831.2],[18159.28,69828.41],[18159.01,69829.16]],"planta":"PB"},{"layer":"M-M-02P-SUP","color":3,"area":71.34067499637604,"arco":false,"cerrado":true,"dib":[[18161.59,69836.57],[18161.19,69837.68],[18164.65,69838.93],[18161.89,69846.58],[18153.66,69844.04],[18154.78,69840.95],[18156.46,69841.56],[18156.98,69840.1],[18155.3,69839.49],[18156.55,69836.01],[18159.26,69836.99],[18159.66,69835.88]],"planta":"02P"},{"layer":"M-M-02P-SUP","color":1,"area":2.774500012397766,"arco":false,"cerrado":true,"dib":[[18154.78,69840.95],[18156.46,69841.56],[18156.98,69840.1],[18155.3,69839.49]],"planta":"02P"}],"murosN":10,"avisos":[],"numPuerta":["N° 3922"],"calles":["CHIVILCOY","BOGOTA","MERCEDES","BACACAY","BOGOTA"],"manzana":[{"layer":"07-M-MANZANA","color":7,"area":11096.656919002533,"arco":false,"cerrado":true,"dib":[[18070.72,69818.47],[18171.26,69849.47],[18209.17,69751.01],[18108.48,69719.76],[18070.72,69818.47]]}],"layouts":["077-092-001b"],"nparc":["001b"]};
 const SAMPLE_CERT = {calle:"BOGOTA",nro:"3922",partida:"1742",seccion:"77",manzana:"092",parcela:"001B",fecha:"11/09/2026",terreno:143,
   unidades:[{sup:193,destino:"VIV. UNIFAMILIAR",categ:"D",antig:"1930",est:"B"},{sup:10,destino:"VIV. UNIFAMILIAR",categ:"D",antig:"1965",est:"B"}]};
 
@@ -741,7 +1680,8 @@ const f = Engine.fmt;
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 const CERT_VACIO = () => ({calle:'',nro:'',partida:'',seccion:'',manzana:'',parcela:'',fecha:'',terreno:null,unidades:[]});
-const state = { dxf:null, dxfName:'', cert:CERT_VACIO(), cerramiento:'muros', ejemplo:false, certOk:false, manual:false, visible:false };
+const state = { dxf:null, dxfName:'', cert:CERT_VACIO(), cerramiento:'muros', ejemplo:false, certOk:false, manual:false, visible:false, c3d:{ key:null, res:null } };
+const ENTORNO = 'web'; // 'web' (GitHub Pages) o 'claude' (vista de claude.ai, sin conexiones externas)
 
 // Colores ACI aproximados para la vista del dibujo
 const ACI = {1:'#e5383b',2:'#e0ac00',3:'#2a9d5c',4:'#18a3b8',5:'#2f5fd0',7:'#8a94a3',30:'#f08a24',52:'#9c7a3c',104:'#c2185b',204:'#7cc59a',32:'#9aa0a8',150:'#5fb3e6',155:'#a0a0a0',200:'#9b7fd1',220:'#9b7fd1'};
@@ -767,6 +1707,7 @@ function actualizar(){
     const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
     setTimeout(() => r.scrollIntoView({ behavior: quieto ? 'auto' : 'smooth', block: 'start' }), 60);
   }
+  if (listo) setTimeout(() => { if (mapa){ mapa.invalidateSize(); encuadrar(); } }, 120);
   state.visible = listo;
 }
 
@@ -956,6 +1897,13 @@ function informe(){
   if (!d) return head + `<h2><span class="n">1</span>Terreno y superficie edificada</h2><div class="empty">Cargá el archivo de relevamiento (DXF) para generar el informe.</div>`;
 
   const { R, T, E, tolTxt, resT, tolCell, textoT, resE, otrasList, textoE, vT, vE, bigT, bigE } = evaluar();
+  const V = validaciones();
+  const resV = (e, txt) => `<span class="res ${e === 'ok' ? 'ok' : e === 'bad' ? 'bad' : 'warn'}">${txt}</span>`;
+  const secV = `
+    <table class="val">
+      <tr><td>Nomenclatura</td><td>${V.nomDet}</td><td>${resV(V.nom.estado, V.nomRes)}</td></tr>
+      <tr><td>Ciudad 3D</td><td>${V.c3dDet}</td><td>${V.c3dEstado === 'off' || V.c3dEstado === 'load' ? '<span class="ref">no consultado</span>' : resV(V.c3dEstado, V.c3dRes)}</td></tr>
+    </table>`;
   const sec1 = `
     <h2><span class="n">1</span>Terreno · Mensura contra título de dominio</h2>
     <table>
@@ -1011,7 +1959,7 @@ function informe(){
   const hoy = new Date().toLocaleDateString('es-AR');
   const foot = `<div class="foot">Fuentes: ${esc(state.dxfName)}; Certificado de Empadronamiento AGIP${c.partida?' partida '+esc(c.partida):''}${c.fecha?' ('+esc(c.fecha)+')':''}; Detalle_Layers_Bloques v4; art. 23 Ley 6.437 y Título 5 del Reglamento Técnico. Superficies calculadas del DXF incluyendo tramos en arco. Informe generado el ${hoy}. Control técnico preliminar: no reemplaza la evaluación del agrimensor ni el dictamen del organismo de aplicación (DGROC / AGIP).</div>`;
 
-  return head + sec1 + sec2 + verdict + sec3 + foot;
+  return head + secV + sec1 + sec2 + verdict + sec3 + foot;
 }
 
 
@@ -1034,6 +1982,7 @@ function vista(){
         <div><dt>Certificado AGIP</dt><dd>${esc(c.fecha || '—')}</dd></div>
         <div><dt>Relevamiento</dt><dd class="fn">${esc(state.dxfName || '—')}</dd></div>
       </dl>
+      <div class="vchips">${chipNom()}${chipC3d()}</div>
     </div>
     <div class="f-res">
       <div class="res-card ${vT}"><span>Terreno</span><b>${bigTcorto}</b></div>
@@ -1084,6 +2033,12 @@ function avisos(){
     const R = Engine.calcular(d, state.cert, {cerramiento: state.cerramiento});
     R.edificado.sinClasif.forEach(p => list.push(`Polígono en ${p.layer} con color ${p.color}, que no figura en la tabla de colores (${f(p.area)} m²). No se computó.`));
     if (!state.cert.unidades.length && !state.ejemplo) list.push('El certificado no tiene unidades constructivas cargadas.');
+    const V = validaciones();
+    if (V.nom.estado === 'bad') list.push(`La nomenclatura del DXF (pestaña «${V.nom.dxf.nombre}») no coincide con la del certificado (${Engine.smpFormato(V.nom.cert)}).`);
+    else if (V.nom.estado === 'warn') list.push(V.nom.texto + '. Según Detalle_Layers_Bloques v4, la pestaña FICHA CATASTRAL debe llamarse SSS-MMM-PPP.');
+    if (!V.georef) list.push('El DXF no está en coordenadas CABA 2019 (POSGAR 2007), por lo que no se puede ubicar en el mapa ni comparar con Ciudad 3D.');
+    if (V.c3dEstado === 'no') list.push(`La parcela ${V.smpApi} no figura en Ciudad 3D. Revisá la nomenclatura o si se trata de una parcela nueva.`);
+    if ((V.c3dEstado === 'warn' || V.c3dEstado === 'bad') && V.cmp) list.push(`La parcela dibujada está desplazada ${f(V.cmp.desplazamiento)} m respecto de Ciudad 3D: revisá la georreferenciación del DXF.`);
   }
   $('avisos').innerHTML = list.map(a => `<li>${esc(a)}</li>`).join('');
   $('obsCount').textContent = list.length ? String(list.length) : '';
@@ -1095,9 +2050,149 @@ function avisos(){
   else { det.className = 'detect warn'; det.innerHTML = '<span class="dot"></span><span>No hay trazos en la capa 10-M-MURO-SEPARATIVO-PARC. Se aplica el 1%; si el terreno tiene muros, dibujalos o cambiá la opción.</span>'; }
 }
 
+
+/* ---------- Nomenclatura y Ciudad 3D ---------- */
+function smpConsulta(){
+  const s = Engine.smpDesdeCert(state.cert) || (state.dxf ? (Engine.nomenclatura(state.dxf, {}).conSmp[0] || {}).smp : null);
+  if (!s) return { s: null, variantes: [] };
+  const corto = `${s.sec.n}${s.sec.l}-${s.mza.n}${s.mza.l}-${s.par.n}${s.par.l}`;
+  return { s, variantes: [...new Set([Engine.smpFormato(s, true), corto])] };
+}
+function dxfGeorref(){
+  const p = state.dxf && (state.dxf.parcela[0] || state.dxf.manzana[0] || state.dxf.sup[0]);
+  return !!(p && Geo.sistema(p.dib[0]) === 'caba2019');
+}
+function verificarC3D(force){
+  const { variantes } = smpConsulta();
+  const key = variantes[0] || null;
+  if (!key){ state.c3d = { key: null, res: null }; return; }
+  if (ENTORNO !== 'web'){ state.c3d = { key, res: { estado: 'off' } }; return; }
+  if (!force && state.c3d.key === key) return;
+  state.c3d = { key, res: { estado: 'load' } };
+  Ciudad3D.consultar(variantes).then(res => {
+    if (state.c3d.key !== key) return;
+    state.c3d.res = res; capasFirma = null;
+    if (state.visible) render();
+  });
+}
+let cmpCache = { firma: null, val: null };
+function validaciones(){
+  const d = state.dxf;
+  const nom = d ? Engine.nomenclatura(d, state.cert) : { estado: 'faltan', texto: 'Falta el DXF', pestañas: [], nparc: [] };
+  const georef = dxfGeorref();
+  const res = state.c3d.res || { estado: 'off' };
+  const { variantes } = smpConsulta();
+  let cmp = null, ev = null;
+  if (res.estado === 'si' && res.polys.length && georef){
+    const firma = state.c3d.key + '|' + state.dxfName + '|' + d.parcela.length;
+    if (cmpCache.firma !== firma) cmpCache = { firma, val: Ciudad3D.comparar(d.parcela.map(p => p.dib), res.polys) };
+    cmp = cmpCache.val; ev = Ciudad3D.evaluar(cmp);
+  }
+  const c3dEstado = res.estado === 'si' ? (ev ? ev.estado : 'ok') : res.estado === 'no' ? 'no' : res.estado;
+  const pestaña = nom.dxf ? nom.dxf.nombre : (nom.pestañas[0] ? nom.pestañas[0].nombre : '—');
+  return {
+    nom, georef, res, cmp, ev, c3dEstado, smpApi: variantes[0] || '—',
+    nomRes: { ok: 'COINCIDE', bad: 'NO COINCIDE', warn: 'REVISAR', faltan: 'FALTAN DATOS' }[nom.estado],
+    nomDet: `Pestaña del DXF «${esc(pestaña)}» · Certificado ${esc(Engine.smpFormato(nom.cert, true) || '—')}`,
+    c3dRes: { ok: 'COINCIDE', warn: 'DIFERENCIAS', bad: 'NO COINCIDE', no: 'NO FIGURA', error: 'SIN RESPUESTA' }[c3dEstado] || '',
+    c3dDet: res.estado === 'si' ? (cmp ? `Parcela registrada · desplazamiento ${f(cmp.desplazamiento)} m · superficie ${f(cmp.areaC3d)} m²` : 'Parcela registrada en el catastro de Ciudad 3D')
+          : res.estado === 'no' ? `La parcela ${esc(variantes[0] || '')} no figura en Ciudad 3D`
+          : res.estado === 'error' ? 'No se pudo consultar el servicio del GCBA' : 'Consulta disponible en la versión publicada de la página',
+  };
+}
+const CHIP = { ok: 'ok', bad: 'bad', warn: 'warn', faltan: 'faltan', no: 'bad', error: 'warn', off: 'off', load: 'load' };
+function chipNom(){ const V = validaciones(); return `<span class="vchip ${CHIP[V.nom.estado]}">Nomenclatura: ${V.nomRes.toLowerCase()}</span>`; }
+function chipC3d(){
+  const V = validaciones();
+  const txt = { ok: 'coincide', warn: 'con diferencias', bad: 'no coincide', no: 'no figura', error: 'sin respuesta', off: 'no consultado', load: 'consultando…' }[V.c3dEstado] || '';
+  return `<span class="vchip ${CHIP[V.c3dEstado] || 'off'}">Ciudad 3D: ${txt}</span>`;
+}
+function vistaValid(){
+  const V = validaciones(), N = V.nom;
+  const pillE = { ok: 'ok', bad: 'bad', warn: 'warn', faltan: 'warn' }[N.estado];
+  const filasPest = N.pestañas.length ? N.pestañas.map(p => `<tr><th>Pestaña del layout (DXF)</th><td class="num">${esc(p.nombre)}${p.smp ? '' : ' <span class="muted">· sin formato</span>'}</td></tr>`).join('') : '<tr><th>Pestaña del layout (DXF)</th><td class="muted">no encontrada</td></tr>';
+  const filasNparc = N.nparc.length ? `<tr><th>Bloque PARCELA_SURGENTE</th><td class="num">${N.nparc.map(x => esc(x.valor)).join(', ')}</td></tr>` : '';
+  $('vNom').innerHTML = `
+    <div class="vh"><h3>Nomenclatura</h3>${pill(pillE, V.nomRes.charAt(0) + V.nomRes.slice(1).toLowerCase())}</div>
+    <table class="wt kv">${filasPest}${filasNparc}<tr><th>Certificado AGIP</th><td class="num">${esc(Engine.smpFormato(N.cert, true) || '—')}</td></tr></table>
+    <p>${esc(N.texto)}.</p>`;
+
+  const r = V.res, e = V.c3dEstado;
+  let cuerpo = '';
+  if (e === 'off') cuerpo = '<p>La consulta a Ciudad 3D y el mapa funcionan en la versión publicada de la página (GitHub Pages). Esta vista no permite conexiones a servicios externos.</p>';
+  else if (e === 'load') cuerpo = `<p>Consultando la parcela ${esc(V.smpApi)} en Ciudad 3D…</p>`;
+  else if (e === 'error') cuerpo = '<p>El servicio de catastro del GCBA no respondió o el navegador bloqueó la conexión. Probá de nuevo en unos minutos.</p><button class="link-btn" type="button" id="bReC3d">Reintentar</button>';
+  else if (e === 'no') cuerpo = `<p>No hay registro de la parcela ${esc(V.smpApi)} en el catastro de Ciudad 3D. Puede tratarse de una nomenclatura mal escrita o de una parcela nueva aún no incorporada.</p>`;
+  else {
+    const P = r.parcela || {};
+    const dato = (k, lab, u) => P[k] != null && P[k] !== '' ? `<tr><th>${lab}</th><td class="num">${typeof P[k] === 'number' ? (u ? f(P[k]) + u : f(P[k], Number.isInteger(P[k]) ? 0 : 2)) : esc(P[k])}</td></tr>` : '';
+    cuerpo = `<table class="wt kv">
+      ${V.cmp ? `<tr><th>Superficie s/Ciudad 3D</th><td class="num">${f(V.cmp.areaC3d)} m²</td></tr>
+      <tr><th>Superficie s/Mensura (DXF)</th><td class="num">${f(V.cmp.areaDxf)} m²</td></tr>
+      <tr><th>Desplazamiento del centroide</th><td class="num">${f(V.cmp.desplazamiento)} m</td></tr>
+      <tr><th>Superposición</th><td class="num">${f(V.cmp.superposicion * 100, 0)} %</td></tr>` : ''}
+      ${dato('superficie_total', 'Superficie total registrada', ' m²')}${dato('superficie_cubierta', 'Superficie cubierta registrada', ' m²')}
+      ${dato('frente', 'Frente', ' m')}${dato('fondo', 'Fondo', ' m')}${dato('pisos_sobre_rasante', 'Pisos sobre rasante')}${dato('propiedad_horizontal', 'Propiedad horizontal')}
+    </table>
+    <p>${V.cmp ? `Criterio: coincide hasta ${Ciudad3D.UMBRAL.ok} m de desplazamiento; con diferencias hasta ${Ciudad3D.UMBRAL.warn} m.` : !V.georef ? 'El DXF no está en coordenadas CABA 2019, por eso no se comparó la geometría.' : 'Ciudad 3D no devolvió la geometría de la parcela para compararla.'}</p>`;
+  }
+  const log = r && r.log && r.log.length ? `<details><summary>Detalle técnico de la consulta</summary><ul>${r.log.map(l => `<li>${esc(l.url)} → ${esc(l.status)}</li>`).join('')}</ul></details>` : '';
+  const pillC = { ok: ['ok', 'Coincide'], warn: ['warn', 'Con diferencias'], bad: ['bad', 'No coincide'], no: ['bad', 'No figura'], error: ['warn', 'Sin respuesta'], off: ['warn', 'No consultado'], load: ['warn', 'Consultando…'] }[e] || ['warn', ''];
+  $('vC3d').innerHTML = `<div class="vh"><h3>Ciudad 3D</h3>${pill(pillC[0], pillC[1])}</div>${cuerpo}${log}
+    <p><a href="https://ciudad3d.buenosaires.gob.ar/" target="_blank" rel="noopener" class="link-btn">Abrir Ciudad 3D</a> <span class="muted">· SMP ${esc(V.smpApi)}</span></p>`;
+  const b = $('bReC3d'); if (b) b.onclick = () => verificarC3D(true) || render();
+}
+
+let mapa = null, capas = null, capasFirma = null, limites = null;
+function dibujarMapa(){
+  const cont = $('mapa');
+  if (ENTORNO !== 'web' || !window.L){
+    cont.innerHTML = `<div class="map-off">${!window.L && ENTORNO === 'web' ? 'No se pudo cargar el mapa. Revisá la conexión a internet.' : 'El mapa con Ciudad 3D se muestra en la versión publicada de la página (GitHub Pages).'}</div>`;
+    $('mapNota').textContent = ''; return;
+  }
+  if (!mapa){
+    mapa = L.map(cont, { scrollWheelZoom: false, zoomSnap: 0.25 });
+    const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 21, attribution: '© OpenStreetMap' });
+    const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxNativeZoom: 19, maxZoom: 21, attribution: 'Imágenes © Esri' });
+    osm.addTo(mapa);
+    mapa._base = { 'Mapa': osm, 'Satélite': sat };
+    mapa.setView([-34.6037, -58.3816], 12);
+  }
+  const V = validaciones();
+  const firma = [state.dxfName, state.c3d.key, V.res && V.res.estado, V.georef].join('|');
+  if (firma === capasFirma) return;
+  capasFirma = firma;
+  if (capas){ capas.grupos.forEach(g => mapa.removeLayer(g)); capas.ctl.remove(); }
+  const d = state.dxf, ll = ring => ring.map(p => { const [lo, la] = Geo.cabaALonLat(p); return [la, lo]; });
+  const g = {}, overlays = {};
+  if (V.res && V.res.estado === 'si' && V.res.polys.length){
+    g.c3d = L.layerGroup(V.res.polys.map(rings => L.polygon(rings.map(r => r.map(([lo, la]) => [la, lo])), { color: '#2f6fe0', weight: 2, fillColor: '#2f6fe0', fillOpacity: .25 }).bindTooltip('Parcela s/Ciudad 3D')));
+    overlays['Parcela Ciudad 3D'] = g.c3d;
+  }
+  if (d && V.georef){
+    g.mza = L.layerGroup(d.manzana.map(p => L.polygon(ll(p.dib), { color: '#8a94a3', weight: 1.5, dashArray: '5 4', fill: false })));
+    g.par = L.layerGroup(d.parcela.map(p => L.polygon(ll(p.dib), { color: '#e73d1e', weight: 2.5, fill: false }).bindTooltip(`Mensura ${f(p.area)} m²`)));
+    g.tit = L.layerGroup(d.titulo.map(p => L.polygon(ll(p.dib), { color: '#e0ac00', weight: 2, dashArray: '6 4', fill: false }).bindTooltip(`Título ${f(p.area)} m²`)));
+    g.pb = L.layerGroup(d.sup.filter(p => p.planta === 'PB' && Engine.COLORES[p.color]?.grupo !== 'excluida').map(p => L.polygon(ll(p.dib), { color: ACI[p.color] || '#8a94a3', weight: 1, fillOpacity: .3 })));
+    Object.assign(overlays, { 'Manzana (DXF)': g.mza, 'Mensura (DXF)': g.par, 'Título (DXF)': g.tit, 'Superficies PB (DXF)': g.pb });
+  }
+  ['mza', 'c3d', 'par', 'tit'].forEach(k => g[k] && g[k].addTo(mapa));
+  capas = { grupos: Object.values(g), ctl: L.control.layers(mapa._base, overlays, { collapsed: false, position: 'topright' }).addTo(mapa) };
+  const b = L.latLngBounds([]);
+  const add = grp => grp && grp.eachLayer(l => b.extend(l.getBounds()));
+  add(g.mza); if (!b.isValid()) { add(g.par); add(g.c3d); }
+  limites = b.isValid() ? b : null;
+  encuadrar();
+  $('mapNota').textContent = V.georef ? 'El DXF se ubica con sus coordenadas CABA 2019 (POSGAR 2007), sin ajustes. Mapa: OpenStreetMap / Esri.' : 'El DXF no tiene coordenadas CABA 2019: sólo se muestra la parcela de Ciudad 3D.';
+}
+function encuadrar(){ if (mapa && limites) mapa.fitBounds(limites, { padding: [24, 24], maxZoom: 20 }); }
+
 function render(){
+  verificarC3D();
   $('sheet').innerHTML = informe();
   vista();
+  vistaValid();
+  dibujarMapa();
   planes();
   avisos();
 }
@@ -1108,8 +2203,8 @@ const nombreArchivo = ext => `informe_TS_${(state.cert.calle||'inmueble').replac
 async function guardar(filename, data){
   const blob = data instanceof Blob ? data : new Blob([data]);
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  const el = document.createElement('a');
+  el.href = url; el.download = filename; document.body.appendChild(el); el.click(); el.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
   $('dlStatus').textContent = 'Listo: ' + filename;
 }
