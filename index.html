@@ -994,7 +994,7 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
     <section class="panel ficha" id="ficha" aria-label="Identificación de la parcela"></section>
 
     <section class="panel" aria-labelledby="hVal">
-      <h2 id="hVal"><span><span class="step">2</span>Nomenclatura y ubicación</span><span class="legend"><span><i style="background:#2f6fe0"></i>Ciudad 3D</span><span><i style="background:#e73d1e"></i>Mensura DXF</span><span><i style="background:#e0ac00"></i>Título DXF</span><span><i style="background:#8a94a3"></i>Manzana DXF</span></span></h2>
+      <h2 id="hVal"><span><span class="step">2</span>Nomenclatura y ubicación</span><span class="legend"><span><i style="background:#2f6fe0"></i>Ciudad 3D</span><span><i style="background:#e73d1e"></i>Mensura DXF</span><span><i style="background:#e0ac00"></i>Título DXF</span><span><i style="background:#19d3ff"></i>Manzana DXF</span></span></h2>
       <div class="body val-grid">
         <div class="stack">
           <div class="vcard" id="vNom"></div>
@@ -2152,10 +2152,13 @@ function dibujarMapa(){
   }
   if (!mapa){
     mapa = L.map(cont, { scrollWheelZoom: false, zoomSnap: 0.25 });
+    // Teselas del GCBA (github.com/datosgcba/tiles-gcba): TMS en EPSG:3857, eje Y invertido ({-y})
+    const usig = 'https://servicios.usig.buenosaires.gob.ar/mapcache/tms/1.0.0/';
+    const aerea = L.tileLayer(usig + 'fotografias_aereas_2017_caba_3857@GoogleMapsCompatible/{z}/{x}/{-y}.png', { maxNativeZoom: 19, maxZoom: 21, attribution: 'Fotografía aérea 2017 © GCBA' });
+    const mapaBA = L.tileLayer(usig + 'amba_con_transporte_3857@GoogleMapsCompatible/{z}/{x}/{-y}.png', { maxNativeZoom: 19, maxZoom: 21, attribution: 'Mapa BA © GCBA' });
     const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 21, attribution: '© OpenStreetMap' });
-    const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxNativeZoom: 19, maxZoom: 21, attribution: 'Imágenes © Esri' });
-    osm.addTo(mapa);
-    mapa._base = { 'Mapa': osm, 'Satélite': sat };
+    aerea.addTo(mapa);
+    mapa._base = { 'Fotografía aérea 2017 (GCBA)': aerea, 'Mapa BA (GCBA)': mapaBA, 'OpenStreetMap': osm };
     mapa.setView([-34.6037, -58.3816], 12);
   }
   const V = validaciones();
@@ -2170,7 +2173,7 @@ function dibujarMapa(){
     overlays['Parcela Ciudad 3D'] = g.c3d;
   }
   if (d && V.georef){
-    g.mza = L.layerGroup(d.manzana.map(p => L.polygon(ll(p.dib), { color: '#8a94a3', weight: 1.5, dashArray: '5 4', fill: false })));
+    g.mza = L.layerGroup(d.manzana.map(p => L.polygon(ll(p.dib), { color: '#19d3ff', weight: 2, dashArray: '6 4', fill: false })));
     g.par = L.layerGroup(d.parcela.map(p => L.polygon(ll(p.dib), { color: '#e73d1e', weight: 2.5, fill: false }).bindTooltip(`Mensura ${f(p.area)} m²`)));
     g.tit = L.layerGroup(d.titulo.map(p => L.polygon(ll(p.dib), { color: '#e0ac00', weight: 2, dashArray: '6 4', fill: false }).bindTooltip(`Título ${f(p.area)} m²`)));
     g.pb = L.layerGroup(d.sup.filter(p => p.planta === 'PB' && Engine.COLORES[p.color]?.grupo !== 'excluida').map(p => L.polygon(ll(p.dib), { color: ACI[p.color] || '#8a94a3', weight: 1, fillOpacity: .3 })));
@@ -2183,7 +2186,7 @@ function dibujarMapa(){
   add(g.mza); if (!b.isValid()) { add(g.par); add(g.c3d); }
   limites = b.isValid() ? b : null;
   encuadrar();
-  $('mapNota').textContent = V.georef ? 'El DXF se ubica con sus coordenadas CABA 2019 (POSGAR 2007), sin ajustes. Mapa: OpenStreetMap / Esri.' : 'El DXF no tiene coordenadas CABA 2019: sólo se muestra la parcela de Ciudad 3D.';
+  $('mapNota').textContent = V.georef ? 'El DXF se ubica con sus coordenadas CABA 2019 (POSGAR 2007), sin ajustes. Fondo: fotografía aérea 2017 y Mapa BA del GCBA (USIG).' : 'El DXF no tiene coordenadas CABA 2019: sólo se muestra la parcela de Ciudad 3D.';
 }
 function encuadrar(){ if (mapa && limites) mapa.fitBounds(limites, { padding: [24, 24], maxZoom: 20 }); }
 
