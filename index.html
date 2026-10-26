@@ -917,6 +917,8 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 .drop.mis{border-color:var(--bad); border-style:solid}
 .drop.mis small{color:var(--bad)}
 
+.privacidad{max-width:780px; margin:22px auto 0; text-align:center; font-size:11.5px; color:var(--muted)}
+
 .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
 @media (max-width:520px){ .grid3{grid-template-columns:1fr 1fr} .uc-row{grid-template-columns:62px 1fr 30px 52px 30px 24px} }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
@@ -1099,6 +1101,7 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
     </div>
     <div class="prev off" id="pdfPrev"><div class="sheet-scroll"><article class="sheet" id="sheet"></article></div></div>
   </div>
+  <p class="privacidad" id="privacidad" hidden>Los archivos se procesan en tu navegador y no se envían a ningún servidor. Esta página registra de forma anónima, sin cookies, las visitas y la cantidad de informes generados, para conocer cuánto se usa.</p>
 </div>
 
 <script>/* ===== Motor: lectura DXF, superficies y reglas (Art. 23 Ley 6.437 / Título 5) ===== */
@@ -1709,7 +1712,13 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 
 const CERT_VACIO = () => ({calle:'',nro:'',partida:'',seccion:'',manzana:'',parcela:'',fecha:'',terreno:null,unidades:[]});
 const state = { dxf:null, dxfName:'', cert:CERT_VACIO(), cerramiento:'muros', ejemplo:false, certOk:false, manual:false, visible:false, c3d:{ key:null, res:null } };
-const ENTORNO = 'web'; // 'web' (GitHub Pages) o 'claude' (vista de claude.ai, sin conexiones externas)
+const ENTORNO = 'web';
+// Estadísticas de uso (GoatCounter, sólo en la versión web): cuenta acciones, nunca envía datos de los archivos
+function evento(path, title){
+  if (ENTORNO !== 'web') return;
+  try { if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path, title, event: true }); } catch (e) {}
+}
+let avisoContado = false; // 'web' (GitHub Pages) o 'claude' (vista de claude.ai, sin conexiones externas)
 
 // Colores ACI aproximados para la vista del dibujo
 const ACI = {1:'#e5383b',2:'#e0ac00',3:'#2a9d5c',4:'#18a3b8',5:'#2f5fd0',7:'#8a94a3',30:'#f08a24',52:'#9c7a3c',104:'#c2185b',204:'#7cc59a',32:'#9aa0a8',150:'#5fb3e6',155:'#a0a0a0',200:'#9b7fd1',220:'#9b7fd1'};
@@ -1726,7 +1735,8 @@ function salirEjemplo(){
 function avisoParcelaDistinta(mostrar){
   const box = $('mismatch');
   ['dropDxf', 'dropPdf'].forEach(id => $(id).classList.toggle('mis', mostrar));
-  if (!mostrar){ box.hidden = true; box.innerHTML = ''; return; }
+  if (!mostrar){ box.hidden = true; box.innerHTML = ''; avisoContado = false; return; }
+  if (!avisoContado){ evento('parcelas-distintas', 'Archivos de parcelas distintas'); avisoContado = true; }
   const N = Engine.nomenclatura(state.dxf, state.cert);
   const smpDxf = N.dxf ? N.dxf.nombre : '—';
   const smpCert = Engine.smpFormato(N.cert, true);
@@ -1765,6 +1775,7 @@ function actualizar(){
   $('results').hidden = !listo;
   if (listo){ llenarForm(); render(); }
   if (state.manual) $('certEdit').open = true;
+  if (listo && !state.visible) evento(state.ejemplo ? 'ejemplo-abierto' : 'informe-generado', state.ejemplo ? 'Ejemplo abierto' : 'Informe generado');
   if (listo && !state.visible){
     const r = $('results'); r.classList.remove('reveal'); void r.offsetWidth; r.classList.add('reveal');
     const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2310,12 +2321,17 @@ $('bPdf').addEventListener('click', async () => {
       pdf.addImage(part.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, W, Math.min(H, part.height * W / canvas.width));
     }
     await guardar(nombreArchivo('pdf'), pdf.output('blob'));
+    evento('pdf-descargado', 'PDF descargado');
   } catch(e){ $('dlStatus').textContent = 'No se pudo generar el PDF.'; console.error(e); }
   b.disabled = false;
 });
 
+
+
+if (ENTORNO === 'web') $('privacidad').hidden = false;
 actualizar();
 </script>
 
+<script data-goatcounter="https://cep-ef-ts.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>
