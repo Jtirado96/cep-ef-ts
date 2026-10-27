@@ -676,9 +676,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
 </style>
 <style>
 :root{
-  --bg:#f3f5f7; --surface:#ffffff; --surface-2:#f7f9fb; --ink:#1d2939; --muted:#5b6777; --line:#dfe4ea;
-  --accent:#1f5f8b; --accent-ink:#ffffff; --accent-soft:#e9f1f7; --rule:#dfe4ea;
-  --ok:#2f7d57; --ok-soft:#eaf5ef; --warn:#8f6312; --warn-soft:#fbf4e4; --bad:#b03a32; --bad-soft:#fbeceb;
+  --bg:#f3f6f9; --grid:#e3eaf0; --surface:#ffffff; --surface-2:#f6f9fb; --ink:#0f2233; --muted:#5a6b7b; --line:#dde5ec;
+  --accent:#0e7c86; --accent-ink:#ffffff; --accent-soft:#e3f3f4; --rule:#dde5ec;
+  --side:#0f2233; --side-2:#16324a; --side-ink:#c9d6e2; --side-k:#5fc4cc;
+  --ok:#2e7d57; --ok-soft:#e6f4ec; --warn:#8f6312; --warn-soft:#fbf3e2; --bad:#b03a32; --bad-soft:#fbeceb;
   --f-display:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -686,15 +687,17 @@ svg.leaflet-image-layer.leaflet-interactive path {
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     color-scheme:dark;
-    --bg:#121820; --surface:#18212b; --surface-2:#1e2934; --ink:#e6ebf0; --muted:#9aa7b4; --line:#2b3744;
-    --accent:#6fa8d6; --accent-ink:#0f1720; --accent-soft:#1c2f40; --rule:#2b3744;
+    --bg:#0c1620; --grid:#14212d; --surface:#132130; --surface-2:#182a3b; --ink:#e4ecf2; --muted:#93a6b6; --line:#24384a;
+    --accent:#4fc3cc; --accent-ink:#06222a; --accent-soft:#12343a; --rule:#24384a;
+    --side:#081119; --side-2:#12273a; --side-ink:#b7c7d4; --side-k:#5fc4cc;
     --ok:#6cc596; --ok-soft:#173326; --warn:#e2b45c; --warn-soft:#3a2e14; --bad:#f08a80; --bad-soft:#3d1f1d;
   }
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --bg:#121820; --surface:#18212b; --surface-2:#1e2934; --ink:#e6ebf0; --muted:#9aa7b4; --line:#2b3744;
-  --accent:#6fa8d6; --accent-ink:#0f1720; --accent-soft:#1c2f40; --rule:#2b3744;
+  --bg:#0c1620; --grid:#14212d; --surface:#132130; --surface-2:#182a3b; --ink:#e4ecf2; --muted:#93a6b6; --line:#24384a;
+  --accent:#4fc3cc; --accent-ink:#06222a; --accent-soft:#12343a; --rule:#24384a;
+  --side:#081119; --side-2:#12273a; --side-ink:#b7c7d4; --side-k:#5fc4cc;
   --ok:#6cc596; --ok-soft:#173326; --warn:#e2b45c; --warn-soft:#3a2e14; --bad:#f08a80; --bad-soft:#3d1f1d;
 }
 *{box-sizing:border-box}
@@ -937,6 +940,67 @@ body{font-size:14px; -webkit-font-smoothing:antialiased}
 
 .privacidad{max-width:780px; margin:22px auto 0; text-align:center; font-size:11.5px; color:var(--muted)}
 
+/* ---- Diseño A · Plano técnico ---- */
+body{background-color:var(--bg); background-image:linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); background-size:28px 28px}
+.app{display:flex; align-items:flex-start; min-height:100vh}
+.side{position:sticky; top:0; height:100vh; width:256px; flex:none; box-sizing:border-box; background:var(--side); color:var(--side-ink); padding:28px 20px; display:flex; flex-direction:column; gap:28px; overflow-y:auto}
+.side-brand{display:grid; gap:6px}
+.side-k{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--side-k); font-weight:600}
+.side-t{font-size:18px; line-height:1.25; font-weight:700; color:#fff}
+.side-steps{list-style:none; margin:0; padding:0; display:grid; gap:4px}
+.side-steps a{display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:8px; color:var(--side-ink); text-decoration:none; font-size:14px; transition:background .15s}
+.side-steps a:hover{background:var(--side-2)}
+.side-steps a:focus-visible{outline:2px solid var(--side-k); outline-offset:1px}
+.side-steps .sn{width:24px; height:24px; flex:none; border-radius:50%; border:1.5px solid #3b5b76; display:grid; place-items:center; font-size:12px; font-weight:600; font-family:var(--f-mono)}
+.side-steps a.done .sn{background:#1d3a52; border-color:#1d3a52; color:var(--side-k)}
+.side-steps a.active{background:var(--side-2); color:#fff; font-weight:600}
+.side-steps a.active .sn{background:var(--accent); border-color:var(--accent); color:#fff}
+.side-steps a.off{opacity:.42; pointer-events:none}
+.side-foot{margin-top:auto; font-size:12px; line-height:1.5; color:#8aa0b4}
+.app .upload{max-width:none; margin:0 0 22px}
+.app > .wrap{flex:1; min-width:0; max-width:1240px; margin:0 auto; padding-inline:32px}
+.hero{border-top:3px solid var(--accent)}
+.hero .eyebrow-h{color:var(--accent)}
+.panel{border-radius:10px; box-shadow:none}
+.panel h2{background:var(--surface); border-bottom:1px solid var(--line)}
+.step{border-color:var(--accent); color:var(--accent)}
+.ficha{border-top:3px solid var(--accent)}
+.f-acts{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px}
+.f-acts .btn,.f-acts .btn2{height:40px; display:inline-flex; align-items:center; padding:0 16px; font-size:13.5px; border-radius:8px; text-decoration:none}
+.btn2{border:1px solid var(--line); background:var(--surface); color:var(--ink); font:inherit; font-weight:600; cursor:pointer}
+.btn2:hover{border-color:var(--accent); color:var(--accent)}
+.kpis{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px}
+.kpi{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px 18px; display:grid; gap:5px; align-content:start}
+.kpi .kl{font-size:12px; color:var(--muted)}
+.kpi .kv{font-family:var(--f-mono); font-size:25px; font-weight:600; line-height:1.15}
+.kpi .kv.tx{font-family:var(--f-body); font-size:21px; font-weight:700}
+.kpi .ks{font-size:12px; color:var(--muted)}
+.kpi .ok{color:var(--ok)} .kpi .warn{color:var(--warn)} .kpi .bad{color:var(--bad)}
+@media (max-width:1080px){ .kpis{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:900px){
+  .app{display:block}
+  .side{position:static; height:auto; width:auto; padding:14px 16px; gap:0; flex-direction:row; align-items:center}
+  .side-steps,.side-foot{display:none}
+  .side-t{font-size:15px}
+  .app > .wrap{padding-inline:12px}
+}
+@media (max-width:520px){ .kpis{grid-template-columns:1fr 1fr; gap:10px} .kpi{padding:12px} .kpi .kv{font-size:19px} .kpi .kv.tx{font-size:16px} }
+
+/* ---- Encabezado con color (diseño A) ---- */
+.app .hero{background-color:var(--side); background-image:linear-gradient(rgba(95,196,204,.09) 1px, transparent 1px), linear-gradient(90deg, rgba(95,196,204,.09) 1px, transparent 1px); background-size:28px 28px; border:none; border-radius:12px; color:#fff; padding:30px 34px 26px}
+.app .hero .eyebrow-h{color:#5fc4cc}
+.app .hero h1{color:#fff}
+.app .hero .lead{color:#c9d6e2}
+.app .hero-top{grid-template-columns:1fr}
+.hero-fig{margin:0}
+.hero-fig svg{display:block; max-width:100%; height:auto}
+.app .hero .norma{flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px}
+.app .hero .chip{background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.22); color:#d6e4ec}
+.app .hero .how{border-top-color:rgba(255,255,255,.12)}
+.app .hero .how li{border-left-color:rgba(255,255,255,.12); color:#a9bccb}
+.app .hero .how b{color:#fff}
+@media (max-width:860px){ .app .hero-top{grid-template-columns:1fr} .hero-fig{display:none} }
+
 .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
 @media (max-width:520px){ .grid3{grid-template-columns:1fr 1fr} .uc-row{grid-template-columns:62px 1fr 30px 52px 30px 24px} }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
@@ -999,6 +1063,21 @@ body{font-size:14px; -webkit-font-smoothing:antialiased}
 @media print{ .sheet{box-shadow:none; width:auto; min-height:0; padding:0} @page{size:A4; margin:14mm} }
 </style>
 
+<div class="app">
+<nav class="side" aria-label="Pasos del análisis">
+  <div class="side-brand">
+    <span class="side-k">CEP · CABA</span>
+    <span class="side-t">Excedente Fiscal y Tolerancia Superficial</span>
+  </div>
+  <ol class="side-steps" id="sideSteps">
+    <li><a href="#secDoc" data-sec="secDoc"><span class="sn">1</span>Documentación</a></li>
+    <li><a href="#secVal" data-sec="secVal"><span class="sn">2</span>Ubicación y Ciudad 3D</a></li>
+    <li><a href="#secTer" data-sec="secTer"><span class="sn">3</span>Terreno</a></li>
+    <li><a href="#secEd" data-sec="secEd"><span class="sn">4</span>Superficie edificada</a></li>
+    <li><a href="#secCon" data-sec="secCon"><span class="sn">5</span>Conclusión</a></li>
+  </ol>
+  <div class="side-foot">Art. 23 Ley 6.437 · Título 5 Reglamento Técnico · Detalle Layers Bloques v4</div>
+</nav>
 
 <style>html,body{margin:0}</style>
 </head>
@@ -1011,8 +1090,8 @@ body{font-size:14px; -webkit-font-smoothing:antialiased}
         <h1>Excedente Fiscal y Tolerancia Superficial para CEP CABA</h1>
         <p class="lead">Compara las superficies del archivo de relevamiento con el Informe de Dominio y con el Certificado de Empadronamiento de AGIP, a partir de la validación de nomenclatura catastral en Ciudad 3D y su georreferenciación.</p>
       </div>
-      <div class="norma"><span class="chip">Art. 23 Ley 6.437</span><span class="chip">Título 5 Reglamento Técnico</span><span class="chip">Formato DXF Detalle Layers Bloques v4</span></div>
     </div>
+    <div class="norma"><span class="chip">Art. 23 Ley 6.437</span><span class="chip">Título 5 Reglamento Técnico</span><span class="chip">Formato DXF Detalle Layers Bloques v4</span></div>
     <ol class="how">
       <li><b>Terreno</b>Mensura (09-M-PARCELA) contra Título (14-M-TITULO), según el art. 23 de la Ley 6.437: tolerancia del 5% con muros o del 1% sin cerramiento materializado.</li>
       <li><b>Edificado</b>Superficies de las capas M-M-##-SUP, clasificadas por color, contra las unidades constructivas de AGIP, según el Título 5: tolerancia del 5%, 3% o 2%.</li>
@@ -1020,7 +1099,7 @@ body{font-size:14px; -webkit-font-smoothing:antialiased}
     </ol>
   </header>
 
-  <section class="panel upload" aria-labelledby="hArch">
+  <section class="panel upload" id="secDoc" aria-labelledby="hArch">
     <h2 id="hArch"><span><span class="step">1</span>Documentación</span><button class="link-btn" id="bReset" type="button" hidden>Empezar de nuevo</button></h2>
     <div class="body">
       <div class="drops">
@@ -1043,8 +1122,9 @@ body{font-size:14px; -webkit-font-smoothing:antialiased}
 
   <div id="results" hidden>
     <section class="panel ficha" id="ficha" aria-label="Identificación de la parcela"></section>
+    <section class="kpis" id="kpis" aria-label="Indicadores principales"></section>
 
-    <section class="panel" aria-labelledby="hVal">
+    <section class="panel" id="secVal" aria-labelledby="hVal">
       <h2 id="hVal"><span><span class="step">2</span>Ubicación y Ciudad 3D</span><span class="legend"><span><i style="background:#2f6fe0"></i>Ciudad 3D</span><span><i style="background:#e73d1e"></i>Mensura DXF</span><span><i style="background:#19d3ff"></i>Manzana DXF</span></span></h2>
       <div class="body val-grid">
         <div class="stack">
@@ -1055,7 +1135,7 @@ body{font-size:14px; -webkit-font-smoothing:antialiased}
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="hTer">
+    <section class="panel" id="secTer" aria-labelledby="hTer">
       <h2 id="hTer"><span><span class="step">3</span>Terreno · Mensura contra título</span><span class="legend"><span><i style="background:#2f5fd0"></i>Mensura</span><span><i style="background:#e0ac00"></i>Título</span></span></h2>
       <div class="body split">
         <div id="planTerreno"></div>
@@ -1074,7 +1154,7 @@ body{font-size:14px; -webkit-font-smoothing:antialiased}
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="hEd">
+    <section class="panel" id="secEd" aria-labelledby="hEd">
       <h2 id="hEd"><span><span class="step">4</span>Superficie edificada · Relevamiento contra AGIP</span><span class="legend" id="legend"></span></h2>
       <div class="body">
         <div class="plans" id="plans"></div>
@@ -1110,7 +1190,7 @@ body{font-size:14px; -webkit-font-smoothing:antialiased}
       <div class="body"><ul class="avisos" id="avisos"></ul></div>
     </section>
 
-    <section class="panel" aria-labelledby="hCon">
+    <section class="panel" id="secCon" aria-labelledby="hCon">
       <h2 id="hCon"><span><span class="step">5</span>Conclusión</span></h2>
       <div class="body concl" id="conclusion"></div>
     </section>
@@ -1123,6 +1203,7 @@ body{font-size:14px; -webkit-font-smoothing:antialiased}
     <div class="prev off" id="pdfPrev"><div class="sheet-scroll"><article class="sheet" id="sheet"></article></div></div>
   </div>
   <p class="privacidad" id="privacidad" hidden>Los archivos se procesan en tu navegador y no se envían a ningún servidor. Esta página registra de forma anónima, sin cookies, las visitas y la cantidad de informes generados, para conocer cuánto se usa.</p>
+</div>
 </div>
 
 <script>/* ===== Motor: lectura DXF, superficies y reglas (Art. 23 Ley 6.437 / Título 5) ===== */
@@ -1688,6 +1769,12 @@ const Ciudad3D = (() => {
   }
 
   async function consultar(variantes) {
+    // Vista previa: respuestas reales de Ciudad 3D guardadas para el ejemplo (sin conexión externa)
+    if (typeof window !== 'undefined' && window.C3D_DEMO) {
+      const D = window.C3D_DEMO;
+      if (!variantes.includes(D.smp)) return { estado: 'off', log: [] };
+      return { estado: 'si', smp: D.smp, parcela: D.parcela, polys: poligonos(D.geo), mza: poligonos(D.mza), log: [{ url: 'Respuestas de Ciudad 3D guardadas para la vista previa', status: 200 }], via: 'demo' };
+    }
     const log = [];
     let parcela = null, usado = null;
     for (const v of variantes) {
@@ -1859,11 +1946,36 @@ function actualizar(){
   if (listo && !state.visible){
     const r = $('results'); r.classList.remove('reveal'); void r.offsetWidth; r.classList.add('reveal');
     const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    setTimeout(() => r.scrollIntoView({ behavior: quieto ? 'auto' : 'smooth', block: 'start' }), 60);
+    if (ENTORNO !== 'demo') setTimeout(() => r.scrollIntoView({ behavior: quieto ? 'auto' : 'smooth', block: 'start' }), 60);
   }
   if (listo) setTimeout(() => { if (mapa){ mapa.invalidateSize(); encuadrar(); } }, 120);
   state.visible = listo;
+  pasos();
 }
+
+
+/* ---------- Barra lateral: pasos ---------- */
+function pasos(){
+  const listo = !$('results').hidden;
+  document.querySelectorAll('#sideSteps a').forEach(a => {
+    const doc = a.dataset.sec === 'secDoc';
+    a.classList.toggle('off', !doc && !listo);
+    a.classList.toggle('done', doc && listo);
+  });
+}
+(() => {
+  const links = [...document.querySelectorAll('#sideSteps a')];
+  const marcar = id => links.forEach(a => a.classList.toggle('active', a.dataset.sec === id));
+  marcar('secDoc');
+  if (!('IntersectionObserver' in window)) return;
+  const vis = new Map();
+  const io = new IntersectionObserver(es => {
+    es.forEach(e => vis.set(e.target.id, e.isIntersecting ? e.intersectionRatio : 0));
+    const top = links.map(a => a.dataset.sec).find(id => (vis.get(id) || 0) > 0.15);
+    if (top) marcar(top);
+  }, { threshold: [0, 0.15, 0.4, 0.8], rootMargin: '-10% 0px -45% 0px' });
+  links.forEach(a => { const s = $(a.dataset.sec); if (s) io.observe(s); });
+})();
 
 /* ---------- Formulario del certificado ---------- */
 const CAMPOS = {cCalle:'calle', cNro:'nro', cSec:'seccion', cMza:'manzana', cPar:'parcela', cPartida:'partida', cFecha:'fecha'};
@@ -2127,6 +2239,7 @@ function vista(){
   const bigEcorto = vE === 'ok' ? 'No declarar ante AGIP' : `Declarar ${E.estado === 'alta' ? 'alta' : 'baja'} de ${f(E.m2)} m²`;
   const bigTcorto = T.estado === 'si' ? 'Existe excedente fiscal' : T.estado === 'faltan' ? 'Faltan datos' : 'No existe excedente fiscal';
 
+  const smpTxt = smp(c);
   $('ficha').innerHTML = `
     <div class="f-id">
       <div class="eyebrow">Parcela · SMP</div>
@@ -2138,11 +2251,25 @@ function vista(){
         <div><dt>Relevamiento</dt><dd class="fn">${esc(state.dxfName || '—')}</dd></div>
       </dl>
       <div class="vchips">${chipNom()}${chipC3d()}</div>
+      <div class="f-acts">
+        ${smpTxt !== '—' ? `<a class="btn2" href="https://ciudad3d.buenosaires.gob.ar/?smp=${encodeURIComponent(smpTxt.toUpperCase())}" target="_blank" rel="noopener">Ver en Ciudad 3D ↗</a>` : ''}
+        <button class="btn" type="button" id="bPdfTop">Descargar PDF</button>
+      </div>
     </div>
     <div class="f-res">
       <div class="res-card ${vT}"><span>Terreno</span><b>${bigTcorto}</b></div>
       <div class="res-card ${vE}"><span>Edificado</span><b>${bigEcorto}</b></div>
     </div>`;
+
+  $('bPdfTop').onclick = () => $('bPdf').click();
+  const V = validaciones(), C = V.cmp, P = V.P;
+  const geoTxt = { ok: ['ok', 'Verificada · tol. 0,51 m'], warn: ['warn', 'Verificar · tol. 0,51 m'], bad: ['bad', 'Error · tol. 2,01 m'], nogeo: ['warn', 'Sin geometría para comparar'], nodxf: ['warn', 'DXF sin coordenadas CABA 2019'], error: ['warn', 'Sin respuesta'], off: ['', 'No consultado'], load: ['', 'Consultando…'] }[V.geoEstado] || ['', ''];
+  const regTxt = { ok: ['ok', 'Registrada'], no: ['bad', 'No figura'], error: ['warn', 'Sin respuesta'], off: ['', 'No consultado'], load: ['', 'Consultando…'] }[V.regEstado] || ['', ''];
+  $('kpis').innerHTML = `
+    <div class="kpi"><span class="kl">Superficie s/Mensura</span><span class="kv">${f(T.SSM)} m²</span><span class="ks">SST ${f(T.SST)} m² · ${pct(T.pct)}</span></div>
+    <div class="kpi"><span class="kl">Construido relevado</span><span class="kv">${f(E.tot.constr)} m²</span><span class="ks">AGIP ${f(E.agip)} m² · ${pct(E.pct)}</span></div>
+    <div class="kpi"><span class="kl">Georreferenciación</span><span class="kv">${C ? f(C.fueraParcela) + ' m' : '—'}</span><span class="ks ${geoTxt[0]}"><b>${geoTxt[1]}</b></span></div>
+    <div class="kpi"><span class="kl">Ciudad 3D</span><span class="kv tx ${regTxt[0]}">${regTxt[1]}</span><span class="ks">${V.regEstado === 'ok' ? `Partida ${esc(P.pdamatriz || '—')}${P.fuente ? ' · ' + esc(P.fuente) : ''}` : 'SMP ' + esc(V.smpApi)}</span></div>`;
 
   const tolLine = T.dif <= 0 ? '<span class="muted">No aplica (SSM ≤ SST)</span>' : `<span class="num">${T.tol}%</span> <span class="muted">· ${tolTxt}</span>`;
   $('terrenoTabla').innerHTML = `
@@ -2226,7 +2353,7 @@ function verificarC3D(force){
   const { variantes } = smpConsulta();
   const key = variantes[0] || null;
   if (!key){ state.c3d = { key: null, res: null }; return; }
-  if (ENTORNO !== 'web'){ state.c3d = { key, res: { estado: 'off' } }; return; }
+  if (ENTORNO !== 'web' && ENTORNO !== 'demo'){ state.c3d = { key, res: { estado: 'off' } }; return; }
   if (!force && state.c3d.key === key) return;
   state.c3d = { key, res: { estado: 'load' } };
   Ciudad3D.consultar(variantes).then(res => {
@@ -2339,7 +2466,7 @@ function vistaValid(){
 let mapa = null, capas = null, capasFirma = null, limites = null;
 function dibujarMapa(){
   const cont = $('mapa');
-  if (ENTORNO !== 'web' || !window.L){
+  if ((ENTORNO !== 'web' && ENTORNO !== 'demo') || !window.L){
     cont.innerHTML = `<div class="map-off">${!window.L && ENTORNO === 'web' ? 'No se pudo cargar el mapa. Revisá la conexión a internet.' : 'El mapa con Ciudad 3D se muestra en la versión publicada de la página (GitHub Pages).'}</div>`;
     $('mapNota').textContent = ''; return;
   }
@@ -2438,6 +2565,7 @@ $('bPdf').addEventListener('click', async () => {
 
 if (ENTORNO === 'web') $('privacidad').hidden = false;
 actualizar();
+if (ENTORNO === 'demo') $('bEjemplo').click();
 </script>
 
 <script data-goatcounter="https://cep-ef-ts.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
