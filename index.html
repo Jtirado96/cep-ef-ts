@@ -1645,10 +1645,11 @@ const Ciudad3D = (() => {
       return { ok: r.ok, status: r.status, data };
     } finally { clearTimeout(t); }
   }
-  // Consulta una ruta del catastro: primero directo; si falla la conexión, por el intermediario. Recuerda la vía que funcionó.
+  // Consulta una ruta del catastro por el intermediario (o directo, si no hay intermediario configurado)
   let via = null;
   async function pedir(ruta, log) {
-    const vias = (via ? [via] : ['directo', 'proxy']).filter(v => v === 'directo' || PROXY);
+    // Con intermediario configurado se usa siempre ese camino; la consulta directa queda sólo si no hay intermediario
+    const vias = PROXY ? ['proxy'] : ['directo'];
     let ultimoError = null;
     for (const v of vias) {
       const url = (v === 'directo' ? ORIGEN : PROXY) + ruta;
@@ -2279,7 +2280,7 @@ function vistaValid(){
   const V = validaciones(), N = V.nom;
   const r = V.res, P = V.P;
   const msgOff = '<p>La consulta a Ciudad 3D y el mapa funcionan en la versión publicada de la página (GitHub Pages). Esta vista no permite conexiones a servicios externos.</p>';
-  const msgErr = '<p>El servicio de catastro del GCBA no respondió o el navegador bloqueó la conexión. Si usás un bloqueador de publicidad o una extensión de privacidad, permití el sitio epok.buenosaires.gob.ar y tocá Reintentar.</p>';
+  const msgErr = '<p>No se pudo conectar con el servicio de catastro de Ciudad 3D. Probá de nuevo en unos minutos con Reintentar.</p>';
 
   // Georreferenciación: compara posición y forma de la parcela del DXF con la de Ciudad 3D
   const g = V.geoEstado, C = V.cmp;
