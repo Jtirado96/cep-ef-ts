@@ -6,7 +6,7 @@
 <meta name="description" content="Informe de excedente fiscal y tolerancia superficial para CEP en CABA: compara el DXF de relevamiento con el título, el certificado de AGIP y Ciudad 3D.">
 <title>Excedente y Tolerancia CEP</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -676,27 +676,26 @@ svg.leaflet-image-layer.leaflet-interactive path {
 </style>
 <style>
 :root{
-  --bg:#fbf5f2; --surface:#ffffff; --surface-2:#fff7f3; --ink:#2a1d18; --muted:#7a625a; --line:#f3d9cc;
-  --accent:#e73d1e; --accent-ink:#ffffff; --accent-soft:#fdf0ea; --rule:#fec807;
-  --grad:linear-gradient(100deg,#e8421e 0%,#f79214 55%,#fec807 100%);
-  --ok:#1a7a34; --ok-soft:#eaf8ed; --warn:#9a5a00; --warn-soft:#fff4d6; --bad:#a4161a; --bad-soft:#fde6e4;
-  --f-display:"Lato", "Helvetica Neue", Arial, sans-serif;
-  --f-body:"Lato", "Segoe UI", system-ui, sans-serif;
+  --bg:#f3f5f7; --surface:#ffffff; --surface-2:#f7f9fb; --ink:#1d2939; --muted:#5b6777; --line:#dfe4ea;
+  --accent:#1f5f8b; --accent-ink:#ffffff; --accent-soft:#e9f1f7; --rule:#dfe4ea;
+  --ok:#2f7d57; --ok-soft:#eaf5ef; --warn:#8f6312; --warn-soft:#fbf4e4; --bad:#b03a32; --bad-soft:#fbeceb;
+  --f-display:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     color-scheme:dark;
-    --bg:#17110f; --surface:#211916; --surface-2:#2a201c; --ink:#f4ebe7; --muted:#b9a39a; --line:#3f2e27;
-    --accent:#ff6b47; --accent-ink:#1a0f0b; --accent-soft:#3a1f17; --rule:#d9a800;
-    --ok:#62d08a; --ok-soft:#15301f; --warn:#f5c04a; --warn-soft:#3a2c10; --bad:#ff8080; --bad-soft:#3d1818;
+    --bg:#121820; --surface:#18212b; --surface-2:#1e2934; --ink:#e6ebf0; --muted:#9aa7b4; --line:#2b3744;
+    --accent:#6fa8d6; --accent-ink:#0f1720; --accent-soft:#1c2f40; --rule:#2b3744;
+    --ok:#6cc596; --ok-soft:#173326; --warn:#e2b45c; --warn-soft:#3a2e14; --bad:#f08a80; --bad-soft:#3d1f1d;
   }
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --bg:#17110f; --surface:#211916; --surface-2:#2a201c; --ink:#f4ebe7; --muted:#b9a39a; --line:#3f2e27;
-  --accent:#ff6b47; --accent-ink:#1a0f0b; --accent-soft:#3a1f17; --rule:#d9a800;
-  --ok:#62d08a; --ok-soft:#15301f; --warn:#f5c04a; --warn-soft:#3a2c10; --bad:#ff8080; --bad-soft:#3d1818;
+  --bg:#121820; --surface:#18212b; --surface-2:#1e2934; --ink:#e6ebf0; --muted:#9aa7b4; --line:#2b3744;
+  --accent:#6fa8d6; --accent-ink:#0f1720; --accent-soft:#1c2f40; --rule:#2b3744;
+  --ok:#6cc596; --ok-soft:#173326; --warn:#e2b45c; --warn-soft:#3a2e14; --bad:#f08a80; --bad-soft:#3d1f1d;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -847,31 +846,44 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 .concl-card.warn{background:var(--warn-soft); border-color:var(--warn)} .concl-card.warn > b{color:var(--warn)}
 .prev.off{position:absolute; left:-10000px; top:0; width:900px}
 
-/* ---- Identidad (colores del informe) ---- */
-.hero{max-width:none!important; margin:20px 0 26px!important; padding:34px 22px 26px!important; border-radius:14px; background:var(--grad); color:#fff}
-.hero h1{color:#fff; font-weight:900; text-shadow:0 1px 2px rgba(120,30,0,.18)}
-.hero .lead{color:rgba(255,255,255,.94)!important; font-weight:400}
-.hero .chip{background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.45); color:#fff}
-.hero .how{max-width:900px; width:100%}
-.hero .how li{border:none; box-shadow:0 2px 8px rgba(120,30,0,.12)}
-.panel{border-radius:10px}
-.panel h2{color:var(--accent); font-weight:900; border-bottom:2px solid var(--rule)}
-.step{background:var(--accent)}
-.btn{background:var(--grad); border:none; font-weight:700; box-shadow:0 2px 8px rgba(231,61,30,.25)}
-.btn:hover:not(:disabled){filter:brightness(1.05)}
-.drop .ico{color:var(--accent); font-weight:700}
-.wt thead th{background:var(--accent); color:#fff; border-bottom:none}
-.wt thead th:first-child{border-top-left-radius:6px} .wt thead th:last-child{border-top-right-radius:6px}
-.wt:not(.kv) tbody tr:nth-child(even) td{background:var(--surface-2)}
-.wt tfoot td{border-top:2px solid var(--accent)}
+/* ---- Diseño profesional ---- */
+body{font-size:14px; -webkit-font-smoothing:antialiased}
+.hero{max-width:none; margin:20px 0 22px; padding:28px 30px 24px; text-align:left; justify-items:stretch; display:grid; gap:20px;
+  background:var(--surface); border:1px solid var(--line); border-top:3px solid var(--accent); border-radius:10px}
+.hero-top{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:18px 32px; align-items:start}
+.hero .eyebrow-h{font-size:11.5px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--accent)}
+.hero h1{font-weight:700; font-size:clamp(24px,3vw,30px); line-height:1.2; letter-spacing:-.01em; margin:6px 0 10px; color:var(--ink); text-wrap:balance}
+.hero .lead{margin:0; font-size:15px; color:var(--muted); max-width:78ch; text-align:left}
+.hero .norma{flex-direction:column; align-items:flex-end; gap:6px}
+.hero .chip{background:var(--surface-2); color:var(--muted); border-color:var(--line)}
+.hero .how{margin:0; padding:16px 0 0; border-top:1px solid var(--line); gap:0; grid-template-columns:repeat(3,1fr)}
+.hero .how li{background:none; border:none; border-radius:0; padding:2px 18px; border-left:1px solid var(--line); font-size:12.5px; line-height:1.55}
+.hero .how li:first-child{border-left:none; padding-left:0}
+.hero .how b{display:block; font-size:11.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink); margin-bottom:2px}
+@media (max-width:860px){ .hero-top{grid-template-columns:1fr} .hero .norma{flex-direction:row; flex-wrap:wrap; align-items:flex-start} }
+@media (max-width:720px){ .hero .how{grid-template-columns:1fr; gap:10px} .hero .how li{border-left:none; padding:0} }
+.panel{border-radius:10px; box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.panel h2{color:var(--ink); font-weight:600; font-size:12.5px; letter-spacing:.07em; background:var(--surface-2); border-bottom:1px solid var(--line); border-radius:10px 10px 0 0}
+.step{background:transparent; color:var(--accent); border:1.5px solid var(--accent); width:21px; height:21px; font-weight:600}
+.btn{background:var(--accent); border:1px solid var(--accent); font-weight:600; box-shadow:none}
+.btn:hover:not(:disabled){filter:brightness(1.08)}
+.link-btn{font-weight:600}
+.drop .ico{color:var(--accent); font-weight:600}
+.drop:hover,.drop.over{border-color:var(--accent); background:var(--accent-soft)}
+.wt thead th{background:var(--surface-2); color:var(--muted); border-bottom:1px solid var(--line); border-top:1px solid var(--line)}
+.wt:not(.kv) tbody tr:nth-child(even) td{background:transparent}
+.wt tfoot td{border-top:1.5px solid var(--ink)}
 .smp-big{color:var(--accent)}
-.ficha{border-top:5px solid transparent; border-image:var(--grad) 1; border-image-slice:1 0 0 0}
-.agip{border-left:4px solid var(--accent)}
+.ficha{border-top:3px solid var(--accent)}
+.agip{border-left:3px solid var(--accent)}
+.res-card,.concl-card{border-left-width:3px}
+.res-card b,.concl-card > b{font-weight:600}
+.pill{font-weight:600}
 
 /* ---- Nomenclatura y ubicación ---- */
 .panel .body.val-grid{display:grid; grid-template-columns:minmax(280px,400px) minmax(0,1fr); gap:20px; align-items:start}
 @media (max-width:900px){ .panel .body.val-grid{grid-template-columns:minmax(0,1fr)} }
-.vcard{background:var(--surface-2); border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:6px; padding:12px 14px; display:grid; gap:8px}
+.vcard{background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:6px; padding:12px 14px; display:grid; gap:8px}
 .vcard .vh{display:flex; justify-content:space-between; align-items:center; gap:10px}
 .vcard .vh h3{margin:0; font-family:var(--f-display); font-size:14px; font-weight:700}
 .vcard .wt{font-size:12.5px} .vcard .wt th,.vcard .wt td{padding:5px 2px}
@@ -899,12 +911,12 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 .vchip.off,.vchip.load{color:var(--muted); background:transparent; border-color:var(--line)}
 
 /* ---- Celular ---- */
-.leaflet-control-layers-toggle,.leaflet-retina .leaflet-control-layers-toggle{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e73d1e' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M12 3 2 8l10 5 10-5-10-5Z'/%3E%3Cpath d='m2 13 10 5 10-5'/%3E%3Cpath d='m2 17.5 10 5 10-5'/%3E%3C/svg%3E"); background-size:22px 22px; background-repeat:no-repeat; background-position:center}
+.leaflet-control-layers-toggle,.leaflet-retina .leaflet-control-layers-toggle{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f5f8b' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M12 3 2 8l10 5 10-5-10-5Z'/%3E%3Cpath d='m2 13 10 5 10-5'/%3E%3Cpath d='m2 17.5 10 5 10-5'/%3E%3C/svg%3E"); background-size:22px 22px; background-repeat:no-repeat; background-position:center}
 @media (max-width:620px){
   .wrap{padding-inline:12px}
-  .hero{padding:22px 16px 20px!important; gap:10px!important; margin:12px 0 18px!important}
+  .hero{padding:20px 16px 18px; gap:14px; margin:12px 0 16px}
   .hero .chip{font-size:10px; padding:2px 6px}
-  .hero h1{font-size:25px}
+  .hero h1{font-size:22px}
   .hero .lead{font-size:13.5px}
   .hero .how{display:none}
   .panel h2{flex-wrap:wrap; row-gap:6px}
@@ -915,7 +927,7 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 }
 
 .mismatch{border:1.5px solid var(--bad); background:var(--bad-soft); border-radius:8px; padding:14px 16px; display:grid; gap:8px}
-.mismatch .mm-h{font-family:var(--f-display); font-weight:900; font-size:16px; color:var(--bad)}
+.mismatch .mm-h{font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--bad)}
 .mismatch p{margin:0; font-size:13px}
 .mismatch .wt{font-size:13px} .mismatch .wt th{width:62%}
 .mismatch details summary{cursor:pointer; font-size:12.5px; font-weight:600; color:var(--accent)}
@@ -931,20 +943,20 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 
 <style id="report-css">
 /* Hoja del informe: siempre en papel claro, también en tema oscuro */
-.sheet{--p-ink:#2a1d18; --p-muted:#7a625a; --p-line:#f3d9cc; --p-soft:#fff7f3; --p-head:#e73d1e; --p-blue:#f79214; --p-ok:#1a7a34; --p-ok-bg:#eaf8ed; --p-bad:#a4161a; --p-bad-bg:#fde6e4; --p-warn:#8a4f00; --p-warn-bg:#fff4d6;
-  width:794px; min-height:1123px; margin:0 auto; background:#fff; color:var(--p-ink); font-family:"Lato","Segoe UI",Arial,sans-serif; font-size:11px; line-height:1.45; padding:40px 44px 34px; box-shadow:0 1px 3px rgba(20,30,50,.12),0 8px 24px rgba(20,30,50,.08)}
+.sheet{--p-ink:#1d2939; --p-muted:#5b6777; --p-line:#dfe4ea; --p-soft:#f5f7fa; --p-head:#1b3a57; --p-blue:#1f5f8b; --p-ok:#2f7d57; --p-ok-bg:#eaf5ef; --p-bad:#b03a32; --p-bad-bg:#fbeceb; --p-warn:#8f6312; --p-warn-bg:#fbf4e4;
+  width:794px; min-height:1123px; margin:0 auto; background:#fff; color:var(--p-ink); font-family:"IBM Plex Sans","Segoe UI",Arial,sans-serif; font-size:11px; line-height:1.45; padding:40px 44px 34px; box-shadow:0 1px 3px rgba(20,30,50,.12),0 8px 24px rgba(20,30,50,.08)}
 .sheet *{box-sizing:border-box}
 .sheet .num{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums; white-space:nowrap}
 .sheet .hd{display:grid; grid-template-columns:1fr auto; gap:6px 20px; border-bottom:2.5px solid var(--p-head); padding-bottom:12px}
-.sheet .hd .k{font-family:"Lato",Arial,sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--p-blue)}
-.sheet .hd h1{font-family:"Lato",Arial,sans-serif; font-size:21px; font-weight:800; line-height:1.15; margin:2px 0 0; color:var(--p-head); letter-spacing:-.01em}
+.sheet .hd .k{font-family:"IBM Plex Sans",Arial,sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--p-blue)}
+.sheet .hd h1{font-family:"IBM Plex Sans",Arial,sans-serif; font-size:21px; font-weight:800; line-height:1.15; margin:2px 0 0; color:var(--p-head); letter-spacing:-.01em}
 .sheet .hd .norm{font-size:10px; color:var(--p-muted); margin-top:3px}
 .sheet .hd .smp{text-align:right; align-self:end}
 .sheet .hd .smp div{font-size:9px; color:var(--p-muted); text-transform:uppercase; letter-spacing:.08em}
 .sheet .hd .smp strong{font-family:"IBM Plex Mono",monospace; font-size:17px; color:var(--p-head)}
 .sheet .meta{display:grid; grid-template-columns:repeat(4,auto); justify-content:space-between; gap:4px 16px; padding:9px 0 4px; font-size:10.5px}
 .sheet .meta span{color:var(--p-muted)}
-.sheet h2{font-family:"Lato",Arial,sans-serif; font-size:13px; font-weight:700; color:var(--p-head); margin:13px 0 6px; display:flex; gap:8px; align-items:baseline}
+.sheet h2{font-family:"IBM Plex Sans",Arial,sans-serif; font-size:13px; font-weight:700; color:var(--p-head); margin:13px 0 6px; display:flex; gap:8px; align-items:baseline}
 .sheet h2 .n{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--p-blue)}
 .sheet p{margin:0 0 7px}
 .sheet table{width:100%; border-collapse:collapse; font-size:10.5px}
@@ -962,7 +974,7 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 .sheet .verdict .row:last-child{border-bottom:none}
 .sheet .verdict .lab{padding:9px 11px; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--p-muted); background:var(--p-soft); border-right:1px solid var(--p-line)}
 .sheet .verdict .val{padding:8px 12px}
-.sheet .verdict .big{font-family:"Lato",Arial,sans-serif; font-weight:800; font-size:14px; letter-spacing:.01em}
+.sheet .verdict .big{font-family:"IBM Plex Sans",Arial,sans-serif; font-weight:800; font-size:14px; letter-spacing:.01em}
 .sheet .verdict .ok .big{color:var(--p-ok)} .sheet .verdict .bad .big{color:var(--p-bad)} .sheet .verdict .warn .big{color:var(--p-warn)}
 .sheet .verdict .ok{background:var(--p-ok-bg)} .sheet .verdict .bad{background:var(--p-bad-bg)} .sheet .verdict .warn{background:var(--p-warn-bg)}
 .sheet .verdict .val p{margin:3px 0 0; font-size:10.5px}
@@ -970,17 +982,15 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 .sheet .foot{margin-top:12px; padding-top:8px; border-top:1px solid var(--p-line); font-size:9px; color:var(--p-muted)}
 .sheet .empty{padding:28px; text-align:center; color:var(--p-muted); border:1px dashed var(--p-line); border-radius:4px}
 
-.sheet .hd{background:linear-gradient(100deg,#e8421e 0%,#f79214 55%,#fec807 100%); border:none; border-radius:8px; padding:14px 18px; color:#fff}
-.sheet .hd .k,.sheet .hd h1,.sheet .hd .norm,.sheet .hd .smp div,.sheet .hd .smp strong{color:#fff}
-.sheet .hd h1{font-weight:900}
-.sheet .hd .norm{opacity:.95}
-.sheet .meta{background:#fff3ee; border-left:4px solid #e73d1e; border-radius:4px; padding:8px 12px; margin-top:10px}
-.sheet h2{font-weight:900; border-bottom:2px solid #fec807; padding-bottom:3px}
-.sheet th{background:#e73d1e; color:#fff; border-bottom:none}
-.sheet tr:nth-child(odd) td{background:#fff7f3}
-.sheet tr.tot td{background:#fdf0ea; border-top:1.5px solid #e73d1e; border-bottom:1.5px solid #e73d1e}
-.sheet .note{border-left-color:#f79214}
-.sheet .verdict{border:1.5px solid #e9c3b3; border-radius:8px}
+.sheet .hd{background:none; border:none; border-bottom:2.5px solid var(--p-head); border-radius:0; padding:0 0 12px}
+.sheet .hd h1{font-weight:700}
+.sheet .meta{background:var(--p-soft); border-left:3px solid var(--p-blue); border-radius:3px; padding:8px 12px; margin-top:10px}
+.sheet h2{font-weight:700; border-bottom:1px solid var(--p-line); padding-bottom:3px}
+.sheet th{background:#eef2f6; color:#3b4a5a; border-bottom:1px solid #cfd7e0}
+.sheet tr:nth-child(odd) td{background:transparent}
+.sheet tr.tot td{background:var(--p-soft); border-top:1.5px solid var(--p-head); border-bottom:1.5px solid var(--p-head)}
+.sheet .note{border-left-color:var(--p-blue)}
+.sheet .verdict{border:1px solid var(--p-line); border-radius:6px}
 .sheet table.val{margin-top:8px}
 .sheet table.val td{padding:4px 6px; vertical-align:middle}
 .sheet table.val td:first-child{font-weight:700; width:150px}
@@ -994,13 +1004,18 @@ details#certEdit summary:focus-visible{outline:2px solid var(--accent); outline-
 <body>
 <div class="wrap">
   <header class="hero">
-    <div class="norma"><span class="chip">Art. 23 Ley 6.437</span><span class="chip">Título 5 Reglamento Técnico</span><span class="chip">Formato DXF Detalle Layers Bloques v4</span></div>
-    <h1>Excedente fiscal y tolerancia superficial</h1>
-    <p class="lead">Para Constitución de Estado Parcelario en la Ciudad de Buenos Aires. Compara las superficies del archivo de relevamiento con el título de dominio y con el Certificado de Empadronamiento de AGIP, y genera el informe comparativo. También verifica la nomenclatura de la parcela y su ubicación en Ciudad 3D.</p>
+    <div class="hero-top">
+      <div>
+        <div class="eyebrow-h">Agrimensura · Constitución de Estado Parcelario</div>
+        <h1>Excedente Fiscal y Tolerancia Superficial para CEP CABA</h1>
+        <p class="lead">Compara las superficies del archivo de relevamiento con el Informe de Dominio y con el Certificado de Empadronamiento de AGIP, a partir de la validación de nomenclatura catastral en Ciudad 3D y su georreferenciación.</p>
+      </div>
+      <div class="norma"><span class="chip">Art. 23 Ley 6.437</span><span class="chip">Título 5 Reglamento Técnico</span><span class="chip">Formato DXF Detalle Layers Bloques v4</span></div>
+    </div>
     <ol class="how">
-      <li><b>Terreno.</b> Mensura (09-M-PARCELA) contra Título (14-M-TITULO), según el art. 23 de la Ley 6.437: tolerancia del 5% con muros o del 1% sin cerramiento materializado.</li>
-      <li><b>Edificado.</b> Superficies de las capas M-M-##-SUP, clasificadas por color, contra las unidades constructivas de AGIP, según el Título 5: tolerancia del 5%, 3% o 2%.</li>
-      <li><b>Resultado.</b> Indica si hay excedente fiscal y si corresponde declarar un alta o una baja ante AGIP.</li>
+      <li><b>Terreno</b>Mensura (09-M-PARCELA) contra Título (14-M-TITULO), según el art. 23 de la Ley 6.437: tolerancia del 5% con muros o del 1% sin cerramiento materializado.</li>
+      <li><b>Edificado</b>Superficies de las capas M-M-##-SUP, clasificadas por color, contra las unidades constructivas de AGIP, según el Título 5: tolerancia del 5%, 3% o 2%.</li>
+      <li><b>Resultado</b>Indica si hay excedente fiscal y si corresponde declarar un alta o una baja ante AGIP.</li>
     </ol>
   </header>
 
@@ -1963,7 +1978,7 @@ function informe(){
   const dir = [c.calle, c.nro].filter(Boolean).join(' ') || '—';
   const head = `
     <div class="hd">
-      <div><div class="k">Informe comparativo</div><h1>Excedente fiscal y tolerancia superficial</h1>
+      <div><div class="k">Informe comparativo · CEP CABA</div><h1>Excedente Fiscal y Tolerancia Superficial</h1>
       <div class="norm">Art. 23 Ley 6.437 de Catastro CABA (terreno) · Título 5 del Reglamento Técnico (superficie edificada)</div></div>
       <div class="smp"><div>SMP</div><strong>${esc(smp(c))}</strong></div>
     </div>
@@ -2200,7 +2215,7 @@ function vistaValid(){
   const V = validaciones(), N = V.nom;
   const r = V.res, P = V.P;
   const msgOff = '<p>La consulta a Ciudad 3D y el mapa funcionan en la versión publicada de la página (GitHub Pages). Esta vista no permite conexiones a servicios externos.</p>';
-  const msgErr = '<p>El servicio de catastro del GCBA no respondió o el navegador bloqueó la conexión. Probá de nuevo en unos minutos.</p>';
+  const msgErr = '<p>El servicio de catastro del GCBA no respondió o el navegador bloqueó la conexión. Si usás un bloqueador de publicidad o una extensión de privacidad, permití el sitio epok.buenosaires.gob.ar y tocá Reintentar.</p>';
 
   // Georreferenciación: compara posición y forma de la parcela del DXF con la de Ciudad 3D
   const g = V.geoEstado, C = V.cmp, U = Ciudad3D.UMBRAL;
@@ -2292,12 +2307,12 @@ function dibujarMapa(){
   capas = { grupos: Object.values(g), ctl: L.control.layers(mapa._base, overlays, { collapsed: window.innerWidth < 700, position: 'topright' }).addTo(mapa) };
   const b = L.latLngBounds([]);
   const add = grp => grp && grp.eachLayer(l => b.extend(l.getBounds()));
-  add(g.mza); if (!b.isValid()) { add(g.par); add(g.c3d); }
+  add(g.par); if (!b.isValid()) add(g.c3d); if (!b.isValid()) add(g.mza);
   limites = b.isValid() ? b : null;
   encuadrar();
   $('mapNota').textContent = V.georef ? 'El DXF se ubica con sus coordenadas CABA 2019 (POSGAR 2007), sin ajustes. Fondo: fotografía aérea 2021 y Mapa BA del GCBA (USIG).' : 'El DXF no tiene coordenadas CABA 2019: sólo se muestra la parcela de Ciudad 3D.';
 }
-function encuadrar(){ if (mapa && limites) mapa.fitBounds(limites, { padding: [24, 24], maxZoom: 20 }); }
+function encuadrar(){ if (mapa && limites) mapa.fitBounds(limites, { padding: [70, 70], maxZoom: 20 }); }
 
 function render(){
   verificarC3D();

@@ -1,8 +1,8 @@
-# Excedente fiscal y tolerancia superficial · CEP CABA
+# Excedente Fiscal y Tolerancia Superficial para CEP CABA
 
 Herramienta web para agrimensores que automatiza el **informe comparativo de excedente fiscal y tolerancia superficial** en trámites de **Constitución de Estado Parcelario (CEP)** en la Ciudad Autónoma de Buenos Aires.
 
-A partir del **archivo de relevamiento (DXF)** y del **Certificado de Empadronamiento de AGIP (PDF)**, la página calcula las superficies, aplica la normativa, valida la parcela contra **Ciudad 3D** y genera el informe en PDF.
+Compara las superficies del archivo de relevamiento con el Informe de Dominio y con el Certificado de Empadronamiento de AGIP, a partir de la validación de nomenclatura catastral en Ciudad 3D y su georreferenciación. Genera el informe en PDF.
 
 **Usar la herramienta:** https://jtirado96.github.io/cep-ef-ts/
 
