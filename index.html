@@ -895,6 +895,7 @@ body{font-size:14px; -webkit-font-smoothing:antialiased}
 .vcard .lead-tx{color:var(--ink); font-size:13px}
 .mapbox .vcard{margin-top:6px}
 .vcard .sub-h{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-top:4px}
+.warn-tx{color:var(--warn); font-family:var(--f-body); font-weight:700; font-size:11.5px}
 .ok-tx{color:var(--ok); font-family:var(--f-body); font-weight:700; font-size:11.5px}
 .bad-tx{color:var(--bad); font-family:var(--f-body); font-weight:700; font-size:11.5px}
 .vcard details summary{cursor:pointer; font-weight:600; color:var(--accent)}
@@ -1590,6 +1591,24 @@ const Geo = (() => {
     return [Math.atan2(Y, X) / RAD, la / RAD];
   }
 
+
+  // ---------- Coordenadas de Ciudad 3D llevadas al marco oficial de catastro ----------
+  // 1) WGS84 → POSGAR 2007 con el ajuste de 3 parámetros que usa PROJ ("POSGAR 2007 to WGS 84 (2)", invertido)
+  function wgsAPosgar(lon, lat) {
+    const w = WGS84, phi = lat * RAD, lam = lon * RAD, N = w.a / Math.sqrt(1 - w.e2 * Math.sin(phi) ** 2);
+    const X = N * Math.cos(phi) * Math.cos(lam) + 0.41, Y = N * Math.cos(phi) * Math.sin(lam) - 0.46, Z = N * (1 - w.e2) * Math.sin(phi) + 0.35;
+    const p = Math.hypot(X, Y); let la = Math.atan2(Z, p * (1 - w.e2));
+    for (let k = 0; k < 6; k++) { const n = w.a / Math.sqrt(1 - w.e2 * Math.sin(la) ** 2); const h = p / Math.cos(la) - n; la = Math.atan2(Z, p * (1 - w.e2 * n / (n + h))); }
+    return [Math.atan2(Y, X) / RAD, la / RAD];
+  }
+  // 2) Parámetros de transformación de Ciudad 3D a las coordenadas oficiales de catastro (mismos que el Validador Automático CEP)
+  const HELMERT_C3D = [-0.839549316178051, 0.311003700314302, 1.0000045988987, -0.000000917727150057199];
+  function c3dACaba([lon, lat]) {
+    const [lo, la] = wgsAPosgar(lon, lat);
+    const [x, y] = tmDirecta(CABA2019, lo, la), P = HELMERT_C3D;
+    return [P[0] + P[2] * x - P[3] * y, P[1] + P[2] * y - P[3] * x];
+  }
+
   const cabaALonLat = ([x, y]) => tmInversa(CABA2019, x, y);
   const lonLatACaba = ([lon, lat]) => tmDirecta(CABA2019, lon, lat);
   const gkbaALonLat = ([x, y]) => { const [lo, la] = tmInversa(GKBA, x, y); return aWGS84(GKBA.el, lo, la, GKBA.towgs84); };
@@ -1605,13 +1624,17 @@ const Geo = (() => {
     const s = sistema(p);
     return s === 'wgs84' ? [p[0], p[1]] : s === 'caba2019' ? cabaALonLat(p) : s === 'gkba' ? gkbaALonLat(p) : null;
   }
-  return { cabaALonLat, lonLatACaba, gkbaALonLat, sistema, aLonLat };
+  return { cabaALonLat, lonLatACaba, gkbaALonLat, sistema, aLonLat, c3dACaba, wgsAPosgar };
 })();
 if (typeof module !== 'undefined') module.exports = Geo;
 </script>
 <script>/* ===== Ciudad 3D: consulta al servicio de catastro del GCBA (EPOK) y comparación con el DXF ===== */
 const Ciudad3D = (() => {
-  const BASE = 'https://epok.buenosaires.gob.ar/catastro';
+  const ORIGEN = 'https://epok.buenosaires.gob.ar';
+  const BASE = ORIGEN + '/catastro';
+  // Intermediario opcional (por ejemplo, un Cloudflare Worker) para cuando el navegador no puede consultar el servicio directamente
+  let PROXY = '';
+  const configurar = (o = {}) => { PROXY = (o.proxy || '').replace(/\/+$/, ''); };
 
   async function getJSON(url, ms = 15000) {
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
@@ -1621,6 +1644,25 @@ const Ciudad3D = (() => {
       let data = null; try { data = JSON.parse(txt); } catch (e) { data = null; }
       return { ok: r.ok, status: r.status, data };
     } finally { clearTimeout(t); }
+  }
+  // Consulta una ruta del catastro: primero directo; si falla la conexión, por el intermediario. Recuerda la vía que funcionó.
+  let via = null;
+  async function pedir(ruta, log) {
+    const vias = (via ? [via] : ['directo', 'proxy']).filter(v => v === 'directo' || PROXY);
+    let ultimoError = null;
+    for (const v of vias) {
+      const url = (v === 'directo' ? ORIGEN : PROXY) + ruta;
+      try {
+        const r = await getJSON(url);
+        log.push({ url, status: r.status });
+        via = v;
+        return r;
+      } catch (e) {
+        ultimoError = e;
+        log.push({ url, status: e.name === 'AbortError' ? 'sin respuesta' : 'bloqueado' });
+      }
+    }
+    throw ultimoError || new Error('sin conexión');
   }
   const tieneDatos = d => d && typeof d === 'object' && !d.error && !d.errores && !(Array.isArray(d) && !d.length) && Object.keys(d).length > 0;
 
@@ -1648,26 +1690,20 @@ const Ciudad3D = (() => {
     const log = [];
     let parcela = null, usado = null;
     for (const v of variantes) {
-      const url = `${BASE}/parcela/?smp=${encodeURIComponent(v)}`;
       try {
-        const r = await getJSON(url);
-        log.push({ url, status: r.status });
+        const r = await pedir(`/catastro/parcela/?smp=${encodeURIComponent(v)}`, log);
         if (r.ok && tieneDatos(r.data)) { parcela = r.data; usado = v; break; }
       } catch (e) {
-        log.push({ url, status: e.name === 'AbortError' ? 'sin respuesta' : 'bloqueado' });
         return { estado: 'error', log, texto: 'No se pudo consultar Ciudad 3D' };
       }
     }
     if (!parcela) return { estado: 'no', log, texto: 'La parcela no figura en Ciudad 3D' };
-    let polys = [];
-    const urlG = `${BASE}/geometria/?smp=${encodeURIComponent(usado)}`;
-    try {
-      const r = await getJSON(urlG);
-      log.push({ url: urlG, status: r.status });
-      if (r.ok) polys = poligonos(r.data);
-    } catch (e) { log.push({ url: urlG, status: 'bloqueado' }); }
+    let polys = [], mza = [];
+    try { const r = await pedir(`/catastro/geometria/?smp=${encodeURIComponent(usado)}`, log); if (r.ok) polys = poligonos(r.data); } catch (e) {}
     if (!polys.length && parcela.geometria) polys = poligonos(parcela.geometria);
-    return { estado: 'si', smp: usado, parcela, polys, log };
+    const sm = usado.split('-').slice(0, 2).join('-');
+    try { const r = await pedir(`/catastro/geometria/?sm=${encodeURIComponent(sm)}`, log); if (r.ok) mza = poligonos(r.data); } catch (e) {}
+    return { estado: 'si', smp: usado, parcela, polys, mza, log, via };
   }
 
   // ---------- Comparación en metros (coordenadas CABA 2019) ----------
@@ -1687,13 +1723,29 @@ const Ciudad3D = (() => {
   }
   const enPoly = (p, rings) => dentro(p, rings[0]) && !rings.slice(1).some(h => dentro(p, h));
 
-  // dxfRings: anillos de la parcela del DXF en CABA 2019; c3dPolys: polígonos de Ciudad 3D en [lon, lat]
-  function comparar(dxfRings, c3dPolys) {
-    const B = c3dPolys.map(rings => rings.map(r => r.map(Geo.lonLatACaba)));
-    const A = dxfRings;
+  // Distancia de un punto al polígono si queda afuera (0 si está adentro)
+  function afuera(p, rings) {
+    if (enPoly(p, rings)) return 0;
+    let d = Infinity;
+    for (const r of rings) for (let i = 0; i < r.length; i++) {
+      const [x1, y1] = r[i], [x2, y2] = r[(i + 1) % r.length], vx = x2 - x1, vy = y2 - y1, L = vx * vx + vy * vy;
+      const t = L ? Math.max(0, Math.min(1, ((p[0] - x1) * vx + (p[1] - y1) * vy) / L)) : 0;
+      d = Math.min(d, Math.hypot(p[0] - (x1 + t * vx), p[1] - (y1 + t * vy)));
+    }
+    return d;
+  }
+  // Ciudad 3D [lon, lat] → coordenadas oficiales de catastro en CABA 2019 (con la corrección del Validador Automático CEP)
+  const aCatastro = polys => polys.map(rings => rings.map(r => r.map(Geo.c3dACaba)));
+
+  // dxfRings: parcela del DXF en CABA 2019; parcC3d y mzaC3d: polígonos de Ciudad 3D en [lon, lat]
+  function comparar(dxfRings, parcC3d, mzaC3d) {
+    const B = aCatastro(parcC3d), Mz = aCatastro(mzaC3d || []);
+    const A = dxfRings, vertices = A.flat();
     const areaA = A.reduce((s, r) => s + Math.abs(area(r)), 0);
     const areaB = B.reduce((s, rings) => s + Math.abs(area(rings[0])) - rings.slice(1).reduce((h, r) => h + Math.abs(area(r)), 0), 0);
     const cA = centroide(A[0]), cB = centroide(B[0][0]);
+    // Apartamiento máximo de los vértices medidos fuera de la parcela y de la manzana de Ciudad 3D
+    const maxFuera = polys => polys.length ? Math.max(...vertices.map(v => Math.min(...polys.map(rings => afuera(v, rings))))) : null;
     // Superposición por muestreo en grilla (precisión ~1%)
     const pts = [...A.flat(), ...B.flat(2)];
     const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
@@ -1706,18 +1758,22 @@ const Ciudad3D = (() => {
       if (a) inA++; if (b) inB++; if (a && b) ambos++;
     }
     const union = inA + inB - ambos;
-    return { areaDxf: areaA, areaC3d: areaB, desplazamiento: Math.hypot(cA[0] - cB[0], cA[1] - cB[1]), superposicion: union ? ambos / union : 0 };
+    return { areaDxf: areaA, areaC3d: areaB, desplazamiento: Math.hypot(cA[0] - cB[0], cA[1] - cB[1]), superposicion: union ? ambos / union : 0,
+             fueraParcela: maxFuera(B), fueraManzana: maxFuera(Mz), parcCatastro: B, mzaCatastro: Mz };
   }
 
-  // Georreferenciación, por desplazamiento entre centros: hasta 1 m coincide; hasta 3 m desplazamiento leve; más, desplazamiento mayor
-  const UMBRAL = { ok: 1, warn: 3 };
+  // Tolerancias del Validador Automático CEP (DGROC): parcela 0,51 m (verificar) y 2,01 m (error); manzana 0,51 m y 1,01 m
+  const TOL = { parcela: { verificar: 0.51, error: 2.01 }, manzana: { verificar: 0.51, error: 1.01 } };
+  const UMBRAL = TOL;
+  const nivel = (d, t) => d == null ? null : d > t.error ? 'bad' : d > t.verificar ? 'warn' : 'ok';
   function evaluar(c) {
-    if (c.desplazamiento <= UMBRAL.ok) return { estado: 'ok', texto: 'Coincide' };
-    if (c.desplazamiento <= UMBRAL.warn) return { estado: 'warn', texto: 'Desplazamiento leve' };
-    return { estado: 'bad', texto: 'Desplazamiento mayor' };
+    const parcela = nivel(c.fueraParcela, TOL.parcela), manzana = nivel(c.fueraManzana, TOL.manzana);
+    const orden = { ok: 0, warn: 1, bad: 2 };
+    const estado = [parcela, manzana].filter(Boolean).reduce((a, b) => orden[b] > orden[a] ? b : a, 'ok');
+    return { estado, parcela, manzana, texto: { ok: 'Verificada', warn: 'Verificar', bad: 'Error' }[estado] };
   }
 
-  return { consultar, comparar, evaluar, poligonos, UMBRAL, BASE };
+  return { consultar, comparar, evaluar, poligonos, configurar, UMBRAL, TOL, BASE };
 })();
 if (typeof module !== 'undefined') module.exports = Ciudad3D;
 </script>
@@ -1733,6 +1789,9 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 const CERT_VACIO = () => ({calle:'',nro:'',partida:'',seccion:'',manzana:'',parcela:'',fecha:'',terreno:null,unidades:[]});
 const state = { dxf:null, dxfName:'', cert:CERT_VACIO(), cerramiento:'muros', ejemplo:false, certOk:false, manual:false, visible:false, c3d:{ key:null, res:null } };
 const ENTORNO = 'web';
+// Dirección del intermediario para consultar Ciudad 3D cuando el navegador no puede hacerlo directo (Cloudflare Worker). Vacío = sólo consulta directa.
+const PROXY_C3D = 'https://epok-proxy.junior-tirado9618.workers.dev';
+Ciudad3D.configurar({ proxy: PROXY_C3D });
 // Estadísticas de uso (GoatCounter, sólo en la versión web): cuenta acciones, nunca envía datos de los archivos
 function evento(path, title){
   if (ENTORNO !== 'web') return;
@@ -2133,7 +2192,12 @@ function avisos(){
     else if (V.nom.estado === 'warn') list.push(V.nom.texto + '. Según Detalle_Layers_Bloques v4, la pestaña FICHA CATASTRAL debe llamarse SSS-MMM-PPP.');
     if (!V.georef) list.push('El DXF no está en coordenadas CABA 2019 (POSGAR 2007), por lo que no se puede ubicar en el mapa ni comparar con Ciudad 3D.');
     if (V.regEstado === 'no') list.push(`La parcela ${V.smpApi} no figura en Ciudad 3D. Revisá la nomenclatura o si se trata de una parcela nueva.`);
-    if ((V.geoEstado === 'warn' || V.geoEstado === 'bad') && V.cmp) list.push(`Georreferenciación: la parcela del DXF está desplazada ${f(V.cmp.desplazamiento)} m respecto de su ubicación en Ciudad 3D. Revisá la georreferenciación del DXF.`);
+    if (V.cmp && V.ev){
+      if (V.ev.parcela === 'bad') list.push(`Georreferenciación: la parcela medida excede la tolerancia de 2,01 m respecto de la parcela de Ciudad 3D (${f(V.cmp.fueraParcela)} m); no se ha georreferenciado correctamente.`);
+      else if (V.ev.parcela === 'warn') list.push(`Georreferenciación: la parcela medida excede la tolerancia de 0,51 m respecto de la parcela de Ciudad 3D (${f(V.cmp.fueraParcela)} m); verificar medidas con la ficha parcelaria.`);
+      if (V.ev.manzana === 'bad') list.push(`Georreferenciación: la parcela medida excede en ${f(V.cmp.fueraManzana)} m la manzana de Ciudad 3D (tolerancia 1,01 m); no se ha georreferenciado correctamente.`);
+      else if (V.ev.manzana === 'warn') list.push(`Georreferenciación: la parcela medida excede en ${f(V.cmp.fueraManzana)} m la manzana de Ciudad 3D (tolerancia 0,51 m); verificar georreferenciación.`);
+    }
   }
   $('avisos').innerHTML = list.map(a => `<li>${esc(a)}</li>`).join('');
   $('obsCount').textContent = list.length ? String(list.length) : '';
@@ -2180,7 +2244,7 @@ function validaciones(){
   let cmp = null, ev = null;
   if (res.estado === 'si' && res.polys.length && georef){
     const firma = state.c3d.key + '|' + state.dxfName + '|' + d.parcela.length;
-    if (cmpCache.firma !== firma) cmpCache = { firma, val: Ciudad3D.comparar(d.parcela.map(p => p.dib), res.polys) };
+    if (cmpCache.firma !== firma) cmpCache = { firma, val: Ciudad3D.comparar(d.parcela.map(p => p.dib), res.polys, res.mza) };
     cmp = cmpCache.val; ev = Ciudad3D.evaluar(cmp);
   }
   // Registro de la parcela en Ciudad 3D y georreferenciación del DXF se evalúan por separado
@@ -2198,8 +2262,8 @@ function validaciones(){
     regDet: regEstado === 'ok' ? `Parcela registrada${P.fuente ? ` · datos ${esc(P.fuente)}` : ''}${P.superficie_total != null ? `: terreno ${f(nro(P.superficie_total))} m²` : ''}${P.superficie_cubierta != null ? `, cubierta ${f(nro(P.superficie_cubierta))} m²` : ''}`
           : regEstado === 'no' ? `La parcela ${esc(variantes[0] || '')} no figura en Ciudad 3D`
           : regEstado === 'error' ? 'No se pudo consultar el servicio del GCBA' : 'Consulta disponible en la versión publicada de la página',
-    geoRes: { ok: 'COINCIDE', warn: 'DESPLAZ. LEVE', bad: 'DESPLAZ. MAYOR', nogeo: 'SIN GEOMETRÍA', nodxf: 'SIN COORDENADAS', error: 'SIN RESPUESTA' }[geoEstado] || '',
-    geoDet: cmp ? `Desplazamiento de ${f(cmp.desplazamiento)} m entre el DXF y Ciudad 3D · superposición ${f(cmp.superposicion * 100, 0)} %`
+    geoRes: { ok: 'VERIFICADA', warn: 'VERIFICAR', bad: 'ERROR', nogeo: 'SIN GEOMETRÍA', nodxf: 'SIN COORDENADAS', error: 'SIN RESPUESTA' }[geoEstado] || '',
+    geoDet: cmp ? `Apartamiento máximo: parcela ${f(cmp.fueraParcela)} m (tol. 0,51 m)${cmp.fueraManzana != null ? ` · manzana ${f(cmp.fueraManzana)} m (tol. 0,51 m)` : ''}`
           : geoEstado === 'nodxf' ? 'El DXF no está en coordenadas CABA 2019' : geoEstado === 'nogeo' ? 'Sin geometría de Ciudad 3D para comparar' : 'Consulta disponible en la versión publicada de la página',
   };
 }
@@ -2208,7 +2272,7 @@ function chipNom(){ const V = validaciones(); return `<span class="vchip ${CHIP[
 function chipC3d(){
   const V = validaciones();
   const reg = { ok: 'registrada', no: 'no figura', error: 'sin respuesta', off: 'no consultado', load: 'consultando…' }[V.regEstado] || '';
-  const geo = { ok: 'coincide', warn: 'desplazamiento leve', bad: 'desplazamiento mayor', nogeo: 'sin geometría', nodxf: 'sin coordenadas', error: 'sin respuesta', off: 'no consultado', load: 'consultando…' }[V.geoEstado] || '';
+  const geo = { ok: 'verificada', warn: 'verificar', bad: 'error', nogeo: 'sin geometría', nodxf: 'sin coordenadas', error: 'sin respuesta', off: 'no consultado', load: 'consultando…' }[V.geoEstado] || '';
   return `<span class="vchip ${CHIP[V.regEstado] || 'off'}">Ciudad 3D: ${reg}</span><span class="vchip ${CHIP[V.geoEstado] || 'off'}">Georreferencia: ${geo}</span>`;
 }
 function vistaValid(){
@@ -2218,7 +2282,7 @@ function vistaValid(){
   const msgErr = '<p>El servicio de catastro del GCBA no respondió o el navegador bloqueó la conexión. Si usás un bloqueador de publicidad o una extensión de privacidad, permití el sitio epok.buenosaires.gob.ar y tocá Reintentar.</p>';
 
   // Georreferenciación: compara posición y forma de la parcela del DXF con la de Ciudad 3D
-  const g = V.geoEstado, C = V.cmp, U = Ciudad3D.UMBRAL;
+  const g = V.geoEstado, C = V.cmp;
   let geoCuerpo;
   if (g === 'off') geoCuerpo = msgOff;
   else if (g === 'load') geoCuerpo = '<p>Esperando la geometría de Ciudad 3D…</p>';
@@ -2226,15 +2290,19 @@ function vistaValid(){
   else if (g === 'nodxf') geoCuerpo = '<p>El DXF no está en coordenadas CABA 2019 (POSGAR 2007), por eso no se puede comparar su ubicación con la de Ciudad 3D.</p>';
   else if (g === 'nogeo') geoCuerpo = `<p>${V.regEstado === 'no' ? 'La parcela no figura en Ciudad 3D, así que no hay geometría con la cual comparar.' : 'Ciudad 3D no devolvió la geometría de la parcela para compararla.'}</p>`;
   else {
+    const marca = (n, d, tol) => n === 'ok' ? '<span class="ok-tx">✓</span>' : n === 'warn' ? `<span class="warn-tx">> ${f(tol.verificar)} m</span>` : `<span class="bad-tx">> ${f(tol.error)} m</span>`;
+    const ev = V.ev, T = Ciudad3D.TOL;
     geoCuerpo = `<table class="wt kv">
+      <tr><th>Parcela · apartamiento máximo</th><td class="num">${f(C.fueraParcela)} m ${marca(ev.parcela, C.fueraParcela, T.parcela)}</td></tr>
+      ${C.fueraManzana != null ? `<tr><th>Manzana · apartamiento máximo</th><td class="num">${f(C.fueraManzana)} m ${marca(ev.manzana, C.fueraManzana, T.manzana)}</td></tr>` : ''}
       <tr><th>Desplazamiento entre centros</th><td class="num">${f(C.desplazamiento)} m</td></tr>
       <tr><th>Superposición de las geometrías</th><td class="num">${f(C.superposicion * 100, 0)} %</td></tr>
       <tr><th>Superficie geometría Ciudad 3D</th><td class="num">${f(C.areaC3d)} m²</td></tr>
       <tr><th>Superficie mensura (DXF)</th><td class="num">${f(state.dxf.parcela.reduce((a, p) => a + p.area, 0))} m²</td></tr>
     </table>`;
   }
-  const pillG = { ok: ['ok', 'Coincide'], warn: ['warn', 'Desplazamiento leve'], bad: ['bad', 'Desplazamiento mayor'], nogeo: ['warn', 'Sin geometría'], nodxf: ['warn', 'Sin coordenadas'], error: ['warn', 'Sin respuesta'], off: ['warn', 'No consultado'], load: ['warn', 'Consultando…'] }[g] || ['warn', ''];
-  const criterio = `Coincide hasta ${U.ok} m de desplazamiento; desplazamiento leve hasta ${U.warn} m; mayor, más de ${U.warn} m.`;
+  const pillG = { ok: ['ok', 'Verificada'], warn: ['warn', 'Verificar'], bad: ['bad', 'Error'], nogeo: ['warn', 'Sin geometría'], nodxf: ['warn', 'Sin coordenadas'], error: ['warn', 'Sin respuesta'], off: ['warn', 'No consultado'], load: ['warn', 'Consultando…'] }[g] || ['warn', ''];
+  const criterio = 'Criterio del Validador Automático CEP: cada vértice de la parcela medida debe quedar a menos de 0,51 m de la parcela de Ciudad 3D (error a más de 2,01 m) y de su manzana (error a más de 1,01 m). Las coordenadas de Ciudad 3D se llevan al marco oficial de catastro antes de comparar.';
   $('vGeo').innerHTML = `<div class="vh"><h3>Georreferenciación <span class="h3s">DXF vs Ciudad 3D</span></h3><span title="${criterio}">${pill(pillG[0], pillG[1])}</span></div>${geoCuerpo}`;
 
   // Parcela en Ciudad 3D: registro y datos publicados (fuente informada por el servicio)
@@ -2295,7 +2363,8 @@ function dibujarMapa(){
   const d = state.dxf, ll = ring => ring.map(p => { const [lo, la] = Geo.cabaALonLat(p); return [la, lo]; });
   const g = {}, overlays = {};
   if (V.res && V.res.estado === 'si' && V.res.polys.length){
-    g.c3d = L.layerGroup(V.res.polys.map(rings => L.polygon(rings.map(r => r.map(([lo, la]) => [la, lo])), { color: '#2f6fe0', weight: 2, fillColor: '#2f6fe0', fillOpacity: .25 }).bindTooltip('Parcela s/Ciudad 3D')));
+    const c3dLL = r => r.map(p => { const [lo, la] = Geo.cabaALonLat(Geo.c3dACaba(p)); return [la, lo]; });
+    g.c3d = L.layerGroup(V.res.polys.map(rings => L.polygon(rings.map(c3dLL), { color: '#2f6fe0', weight: 2, fillColor: '#2f6fe0', fillOpacity: .25 }).bindTooltip('Parcela s/Ciudad 3D')));
     overlays['Parcela Ciudad 3D'] = g.c3d;
   }
   if (d && V.georef){
@@ -2310,7 +2379,7 @@ function dibujarMapa(){
   add(g.par); if (!b.isValid()) add(g.c3d); if (!b.isValid()) add(g.mza);
   limites = b.isValid() ? b : null;
   encuadrar();
-  $('mapNota').textContent = V.georef ? 'El DXF se ubica con sus coordenadas CABA 2019 (POSGAR 2007), sin ajustes. Fondo: fotografía aérea 2021 y Mapa BA del GCBA (USIG).' : 'El DXF no tiene coordenadas CABA 2019: sólo se muestra la parcela de Ciudad 3D.';
+  $('mapNota').textContent = V.georef ? 'El DXF se ubica con sus coordenadas CABA 2019 (POSGAR 2007), sin ajustes; la parcela de Ciudad 3D se lleva al marco oficial de catastro. Fondo: fotografía aérea 2021 y Mapa BA del GCBA (USIG).' : 'El DXF no tiene coordenadas CABA 2019: sólo se muestra la parcela de Ciudad 3D.';
 }
 function encuadrar(){ if (mapa && limites) mapa.fitBounds(limites, { padding: [70, 70], maxZoom: 20 }); }
 

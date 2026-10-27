@@ -77,21 +77,22 @@ El DXF debe respetar los niveles de información del documento **Detalle_Layers_
 
 Si la diferencia supera la tolerancia: relevado mayor que AGIP → **alta**; relevado menor → **baja**.
 
-**Georreferenciación (DXF vs Ciudad 3D),** según el desplazamiento entre los centros de las dos geometrías:
-- hasta 1 m: coincide;
-- hasta 3 m: desplazamiento leve;
-- más de 3 m: desplazamiento mayor.
+**Georreferenciación (DXF vs Ciudad 3D),** con los criterios del [Validador Automático CEP](https://github.com/nquinterno/Validador_Automatico_CEP):
+- Las coordenadas de Ciudad 3D se llevan al marco oficial de catastro (CABA 2019 con la transformación de Helmert que usa el validador) antes de comparar.
+- **Parcela:** cada vértice de la parcela medida debe quedar a menos de **0,51 m** de la parcela de Ciudad 3D; entre 0,51 y 2,01 m corresponde **verificar**; más de **2,01 m** es **error**.
+- **Manzana:** la parcela medida no debe exceder la manzana de Ciudad 3D en más de **0,51 m** (verificar) ni de **1,01 m** (error).
 
 ## Fuentes de datos
 
-- **Catastro de Ciudad 3D (GCBA):** servicio `epok.buenosaires.gob.ar/catastro` (parcela y geometría por SMP). Los datos registrados de la parcela provienen de la fuente que informa el propio servicio, por ejemplo AGIP (2008).
+- **Catastro de Ciudad 3D (GCBA):** servicio `epok.buenosaires.gob.ar/catastro` (parcela y geometría por SMP, y geometría de la manzana). Los datos registrados de la parcela provienen de la fuente que informa el propio servicio, por ejemplo AGIP (2008).
+- **Intermediario (`worker-ciudad3d.js`):** un Cloudflare Worker que consulta el servicio de Ciudad 3D cuando el navegador no puede hacerlo directamente. Sólo atiende pedidos de esta página y rutas de catastro.
 - **Mapa:** fotografía aérea 2021 y Mapa BA del GCBA (USIG), según [datosgcba/tiles-gcba](https://github.com/datosgcba/tiles-gcba), y OpenStreetMap.
 - **Normativa:** Ley 6.437 de Catastro de la CABA (art. 23), Título 5 del Reglamento Técnico y Detalle_Layers_Bloques v4.
 
 ## Privacidad
 
 - **Los archivos no salen de tu computadora:** el DXF y el certificado se procesan en el navegador y no se envían a ningún servidor.
-- **Consulta a Ciudad 3D:** se envía únicamente el SMP de la parcela.
+- **Consulta a Ciudad 3D:** se envía únicamente el SMP de la parcela (directo o a través del intermediario).
 - **Estadísticas de uso:** la página registra de forma anónima, sin cookies, las visitas y la cantidad de informes generados, mediante [GoatCounter](https://www.goatcounter.com/). No se registra ningún dato de los archivos ni de las parcelas.
 
 ## Tecnología
