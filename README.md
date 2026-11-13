@@ -55,7 +55,7 @@ El DXF debe respetar los niveles de información del documento **Detalle_Layers_
 | 52 | Precaria | Construido |
 | 104 | En contravención | Construido |
 | Verde (3) | Descubierta | Informativa |
-| 204 | Balcón descubierto | Informativa (suma a descubierta) |
+| 5 (azul) | Balcón descubierto | Informativa (suma a descubierta) |
 | 200 / 220 | Superpuesta interior / exterior | No se computa |
 | 32 | Vano a descontar | No se computa |
 | 150 | Pileta | No se computa |

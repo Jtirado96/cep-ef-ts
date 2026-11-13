@@ -1219,7 +1219,8 @@ const Engine = (() => {
     52:  { nombre: 'Superficie precaria',      col: 'otras', grupo: 'construido' },
     104: { nombre: 'Superficie en contravención', col: 'otras', grupo: 'construido' },
     3:   { nombre: 'Descubierta',              col: 'desc',  grupo: 'descubierta' },
-    204: { nombre: 'Balcón descubierto',       col: 'desc',  grupo: 'descubierta' },
+    5:   { nombre: 'Balcón descubierto',       col: 'desc',  grupo: 'descubierta' },
+    204: { nombre: 'Balcón descubierto',       col: 'desc',  grupo: 'descubierta' }, // compatibilidad con versiones anteriores
     200: { nombre: 'Superpuesta interior',     grupo: 'excluida' },
     220: { nombre: 'Superpuesta exterior',     grupo: 'excluida' },
     32:  { nombre: 'Vano a descontar',         grupo: 'excluida' },
@@ -2207,7 +2208,7 @@ function informe(){
           ${filas || '<tr><td colspan="6" class="ref">No se encontraron capas M-M-##-SUP.</td></tr>'}
           <tr class="tot"><td>Total m²</td><td class="r num">${f(E.tot.cub)}</td><td class="r num">${f(E.tot.semi)}</td><td class="r num">${f(E.tot.otras)}</td><td class="r num">${f(E.tot.constr)}</td><td class="r num">${f(E.tot.desc)}</td></tr>
         </table>
-        <div class="note">*Otras computables: balcón semicubierto (cyan), cuerpo saliente (30), precaria (52) y contravención (104)${otrasList.length ? '. En este plano: ' + otrasList.map(([k,v])=>`${k.toLowerCase()} ${f(v)} m²`).join(', ') : '; no hay en este plano'}. Descubierta incluye balcón descubierto (204).${excl.length ? ' No computados: ' + excl.map(([k,v])=>`${k.toLowerCase()} (${v.n}, ${f(v.area)} m²)`).join(', ') + '.' : ''}</div>
+        <div class="note">*Otras computables: balcón semicubierto (cyan), cuerpo saliente (30), precaria (52) y contravención (104)${otrasList.length ? '. En este plano: ' + otrasList.map(([k,v])=>`${k.toLowerCase()} ${f(v)} m²`).join(', ') : '; no hay en este plano'}. Descubierta incluye balcón descubierto (azul, color 5).${excl.length ? ' No computados: ' + excl.map(([k,v])=>`${k.toLowerCase()} (${v.n}, ${f(v.area)} m²)`).join(', ') + '.' : ''}</div>
       </div>
       <div>
         <table>
