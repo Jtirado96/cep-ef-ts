@@ -781,6 +781,29 @@ input.num{font-family:var(--f-mono); text-align:right}
 .report{display:grid; gap:12px}
 .rep-h{font-family:var(--f-display); font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:8px 0 0; text-align:center}
 .bq{display:grid; gap:12px}
+.ed{border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--surface)}
+.ed-bar{display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; padding:8px 10px; border-bottom:1px solid var(--line); background:var(--surface-2)}
+.ed-tabs,.ed-tools{display:flex; flex-wrap:wrap; gap:6px}
+.ed .tab,.ed .tb{font:inherit; font-size:12.5px; font-weight:600; padding:6px 11px; border-radius:7px; border:1px solid var(--line); background:var(--surface); color:var(--ink); cursor:pointer}
+.ed .tab[aria-selected="true"],.ed .tb[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.ed-main{display:grid; grid-template-columns:minmax(0,1fr) 290px}
+.ed-view{position:relative; min-height:460px; border-right:1px solid var(--line)}
+.ed-view svg{position:absolute; inset:0; width:100%; height:100%; cursor:crosshair; touch-action:none; background:var(--surface); outline:none}
+.ed-hint{position:absolute; left:10px; right:10px; bottom:10px; font-size:12px; color:var(--muted); background:color-mix(in srgb, var(--surface) 88%, transparent); padding:6px 9px; border-radius:6px; border:1px solid var(--line); pointer-events:none}
+.ed-lbl{font:600 11px 'IBM Plex Mono',monospace; fill:var(--ink)}
+.ed-snap{font:600 11px 'IBM Plex Sans',sans-serif; fill:var(--accent)}
+.ed-side{display:flex; flex-direction:column; gap:10px; padding:12px; background:var(--surface-2)}
+.ed-card{background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:10px 12px; display:grid; gap:6px}
+.ed-k{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.ed-v{font:600 20px 'IBM Plex Mono',monospace}
+.ed-s{font-size:12px; color:var(--muted); line-height:1.45}
+.ed-chk{display:flex; gap:8px; align-items:center; font-size:13px; font-weight:600}
+.ed-f{display:grid; gap:4px; font-size:12px; color:var(--muted)}
+.ed-f select,.ed-f input{width:100%; min-width:0; box-sizing:border-box; font:inherit; font-size:13px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--surface); color:var(--ink)}
+.ed-list{margin:0; padding-left:18px; font-size:12px; display:grid; gap:3px}
+.ed-list button{font:inherit; color:var(--accent); background:none; border:0; padding:0; cursor:pointer; font-weight:600}
+.ed-side .btn[disabled]{opacity:.5; cursor:not-allowed}
+@media (max-width:860px){ .ed-main{grid-template-columns:1fr} .ed-view{border-right:0; border-bottom:1px solid var(--line); min-height:380px} }
 .bq p{margin:0; font-size:13.5px; line-height:1.55}
 .bq .bq-row{display:flex; flex-wrap:wrap; align-items:center; gap:12px}
 .bq .bq-row .st{font-size:12.5px; color:var(--muted)}
@@ -1323,7 +1346,8 @@ const Engine = (() => {
             if (c === 10) tgt.pt[0] = +v; else if (c === 20) tgt.pt[1] = +v; else if (c === 42) tgt.pt[2] = +v;
             else if (c === 70 && (+v & 16)) tgt.pt.control = true;
           } else {
-            if (c === 8) tgt.layer = v.trim();
+            if (c === 5) tgt.h = v.trim();
+            else if (c === 8) tgt.layer = v.trim();
             else if (c === 62) tgt.color = parseInt(v, 10);
             else if (c === 67) tgt.ps = +v === 1;
             else if (c === 70) tgt.flags = parseInt(v, 10);
@@ -1407,7 +1431,7 @@ const Engine = (() => {
   function analizar(buf) {
     const { ents, layouts } = parseDxf(decode(buf));
     const avisos = [];
-    const poly = e => ({ layer: e.layerU, color: e.colorReal, area: Math.abs(signedArea(e.pts)), arco: e.pts.some(p => p[2]), cerrado: !!(e.flags & 1), dib: flatten(e.pts) });
+    const poly = e => ({ h: e.h, tipo: e.type, pts: e.pts, layer: e.layerU, color: e.colorReal, area: Math.abs(signedArea(e.pts)), arco: e.pts.some(p => p[2]), cerrado: !!(e.flags & 1), dib: flatten(e.pts) });
 
     const polys = ents.filter(isClosedPoly).map(poly);
     const parcela = polys.filter(p => p.layer === CAPA.parcela);
@@ -1881,7 +1905,7 @@ const Bloques = (() => {
   // Qué bloque va en cada color de las capas *-SUP (Detalle Layers Bloques v4)
   const EMPADRONADO = new Set([1, 2, 4, 30, 52, 104]); // cubierta, semicubierta, balcón semicub., cuerpo saliente, precaria, contravención
   const DESCUBIERTO = new Set([3, 5, 204]);             // descubierta, balcón descubierto
-  const NOMBRE = { empadronado: 'form_empadronado', descubierto: 'form_descubierto' };
+  const NOMBRE = { empadronado: 'form_empadronado', descubierto: 'form_descubierto', form: 'form' };
   const RE_FORM = /^form(_empadronado|_descubierto|_vacio)?$/i;
 
   // ---------- Lectura mínima del texto DXF conservando posiciones ----------
@@ -1889,7 +1913,8 @@ const Bloques = (() => {
   function leer(txt) {
     const eol = txt.includes('\r\n') ? '\r\n' : '\n';
     const L = txt.split(/\r?\n/);
-    const r = { eol, L, seccion: {}, inserts: [], bloques: new Set(), capas: [], handseed: null, msOwner: null, version: null };
+    const r = { eol, L, seccion: {}, inserts: [], bloques: new Set(), defs: {}, capas: [], handseed: null, maxHandle: 0, msOwner: null, version: null };
+    let blq = null;
     let sec = null;
     for (let i = 0; i + 1 < L.length; i += 2) {
       const c = parseInt(L[i], 10), v = L[i + 1];
@@ -1909,9 +1934,21 @@ const Bloques = (() => {
         for (let j = i + 2; j + 1 < L.length && parseInt(L[j], 10) !== 0; j += 2)
           if (parseInt(L[j], 10) === 2) { r.capas.push(L[j + 1].trim()); break; }
       }
+      if ((c === 5 || c === 105) && sec !== 'HEADER') { const hv = parseInt(L[i + 1], 16); if (hv > r.maxHandle) r.maxHandle = hv; }
       if (sec === 'BLOCKS' && c === 0 && v === 'BLOCK') {
         for (let j = i + 2; j + 1 < L.length && parseInt(L[j], 10) !== 0; j += 2)
-          if (parseInt(L[j], 10) === 2) { r.bloques.add(L[j + 1].trim()); break; }
+          if (parseInt(L[j], 10) === 2) { const n = L[j + 1].trim(); r.bloques.add(n); blq = r.defs[n.toLowerCase()] = { nombre: n, caja: null, attdefs: [] }; break; }
+        continue;
+      }
+      if (sec === 'BLOCKS' && c === 0 && v === 'ENDBLK') { blq = null; continue; }
+      if (sec === 'BLOCKS' && blq && c === 0 && (v === 'LWPOLYLINE' || v === 'ATTDEF')) {
+        const g = [];
+        for (let j = i + 2; j + 1 < L.length && parseInt(L[j], 10) !== 0; j += 2) g.push([parseInt(L[j], 10), L[j + 1]]);
+        if (v === 'ATTDEF') blq.attdefs.push(g);
+        else {
+          const xs = g.filter(([k]) => k === 10).map(([, x]) => +x), ys = g.filter(([k]) => k === 20).map(([, y]) => +y);
+          if (xs.length) blq.caja = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+        }
       }
       if (sec === 'ENTITIES' && c === 0 && v === 'INSERT') {
         const e = { nombre: '', capa: '0', x: 0, y: 0, ps: false };
@@ -1993,21 +2030,28 @@ const Bloques = (() => {
 
   // ---------- Propuesta de bloques ----------
   // sup: polígonos de las capas *-SUP de Engine.analizar (con layer, color, planta, area, dib)
-  function proponer(txt, sup) {
+  // declarar: Map handle → { tipo, nform } para los polígonos que se declaran (llevan el bloque FORM)
+  function proponer(txt, sup, declarar = new Map()) {
     const r = leer(txt);
     const existentes = r.inserts.filter(e => RE_FORM.test(e.nombre));
     const items = [];
     for (const p of sup) {
-      const tipo = EMPADRONADO.has(p.color) ? 'empadronado' : DESCUBIERTO.has(p.color) ? 'descubierto' : null;
+      const dec = p.h && declarar.get(p.h);
+      const tipo = dec && EMPADRONADO.has(p.color) ? 'form' : EMPADRONADO.has(p.color) ? 'empadronado' : DESCUBIERTO.has(p.color) ? 'descubierto' : null;
       if (!tipo) continue;
       const bb = caja(p.dib);
       // obstáculos: otros polígonos de la misma capa que se superponen (vanos, superpuestas, polígonos internos)
       const obst = sup.filter(q => q !== p && q.layer === p.layer && solapan(bb, caja(q.dib)) && q.area < p.area).map(q => q.dib);
       const ya = existentes.find(e => e.capa === p.layer && dentro([e.x, e.y], p.dib) && !obst.some(o => dentro([e.x, e.y], o)));
       const c = centro(p.dib, obst);
-      items.push({ tipo, bloque: NOMBRE[tipo], capa: p.layer, planta: p.planta, color: p.color, area: p.area, x: c.x, y: c.y, holgura: c.h, existente: ya ? ya.nombre : null, dib: p.dib });
+      const it = { tipo, bloque: NOMBRE[tipo], h: p.h, capa: p.layer, planta: p.planta, color: p.color, area: p.area, x: c.x, y: c.y, holgura: c.h, existente: ya ? ya.nombre : null, dib: p.dib };
+      if (tipo === 'form') it.atributos = { tipo: dec.tipo, nform: dec.nform };
+      items.push(it);
     }
-    const faltan = Object.values(NOMBRE).filter(n => ![...r.bloques].some(b => b.toLowerCase() === n));
+    // Nº de polígono declarado: correlativo
+    let n = 0; items.filter(it => it.tipo === 'form').forEach(it => it.atributos.npolig = String(++n));
+    const usados = new Set(items.map(it => it.bloque));
+    const faltan = Object.values(NOMBRE).filter(n => usados.has(n) && ![...r.bloques].some(b => b.toLowerCase() === n));
     return { items, faltan, version: r.version, existentes: existentes.length };
   }
 
@@ -2017,17 +2061,47 @@ const Bloques = (() => {
     const ent = r.seccion.ENTITIES;
     if (!ent || ent.fin == null) throw new Error('El DXF no tiene sección ENTITIES.');
     const conHandles = r.version && r.version >= 'AC1015' && r.handseed && r.msOwner;
-    let h = r.handseed ? r.handseed.valor : null;
+    let h = r.handseed ? Math.max(r.handseed.valor, r.maxHandle + 1) : null;
     const nombreReal = n => [...r.bloques].find(b => b.toLowerCase() === n) || n;
     const capaReal = n => r.capas.find(c => c.toUpperCase() === n.toUpperCase()) || n;
     const num = v => (Math.round(v * 1e6) / 1e6).toFixed(6);
     const nuevas = [];
     for (const it of items) {
+      const def = r.defs[it.bloque.toLowerCase()];
+      // el punto de inserción se corre para que el recuadro del bloque quede centrado en el polígono
+      const cx = def && def.caja ? (def.caja[0] + def.caja[2]) / 2 : 0, cy = def && def.caja ? (def.caja[1] + def.caja[3]) / 2 : 0;
+      const x = it.x - cx, y = it.y - cy;
+      const attdefs = it.atributos && def ? def.attdefs : [];
       const g = [['0', 'INSERT']];
-      if (conHandles) g.push(['5', (h++).toString(16).toUpperCase()], ['330', r.msOwner], ['100', 'AcDbEntity']);
+      const hIns = conHandles ? (h++).toString(16).toUpperCase() : null;
+      if (conHandles) g.push(['5', hIns], ['330', r.msOwner], ['100', 'AcDbEntity']);
       g.push(['8', capaReal(it.capa)]);
       if (conHandles) g.push(['100', 'AcDbBlockReference']);
-      g.push(['2', nombreReal(it.bloque)], ['10', num(it.x)], ['20', num(it.y)], ['30', '0.0']);
+      if (attdefs.length) g.push(['66', '     1']);
+      g.push(['2', nombreReal(it.bloque)], ['10', num(x)], ['20', num(y)], ['30', '0.0']);
+      // ATTRIB: copia de cada ATTDEF de la definición, desplazada al punto de inserción y con su valor
+      for (const ad of attdefs) {
+        const tag = (ad.find(([k]) => k === 2) || [, ''])[1].trim();
+        const valor = valorAtributo(tag, it.atributos);
+        g.push(['0', 'ATTRIB']);
+        let enDef = false;
+        for (const [k, v] of ad) {
+          if (k === 5) { if (conHandles) g.push(['5', (h++).toString(16).toUpperCase()]); continue; }
+          if (k === 330) { if (conHandles) g.push(['330', hIns]); continue; }
+          if (k === 100 && v.trim() === 'AcDbAttributeDefinition') { enDef = true; g.push(['100', 'AcDbAttribute']); continue; }
+          if (k === 3 && enDef) continue; // el prompt solo existe en la definición
+          if (k === 102 || k === 360) continue;
+          if (k === 1 && !enDef) { g.push(['1', valor]); continue; }
+          if (k === 10 || k === 11) { g.push([String(k), num(+v + x)]); continue; }
+          if (k === 20 || k === 21) { g.push([String(k), num(+v + y)]); continue; }
+          g.push([String(k), v]);
+        }
+      }
+      if (attdefs.length) {
+        g.push(['0', 'SEQEND']);
+        if (conHandles) g.push(['5', (h++).toString(16).toUpperCase()], ['330', hIns], ['100', 'AcDbEntity']);
+        g.push(['8', capaReal(it.capa)]);
+      }
       for (const [c, v] of g) nuevas.push(c.padStart(3, ' '), v);
     }
     const L = r.L.slice();
@@ -2036,9 +2110,307 @@ const Bloques = (() => {
     return L.join(r.eol);
   }
 
-  return { proponer, escribir, centro, leer, EMPADRONADO, DESCUBIERTO };
+  function valorAtributo(tag, a) {
+    const t = tag.toUpperCase().replace(/[^A-Z_]/g, '');
+    if (t.startsWith('TIPO')) return a.tipo;
+    if (t.includes('POLIG')) return a.npolig;
+    if (t.includes('FORM')) return a.nform;
+    return '';
+  }
+
+  return { proponer, escribir, centro, leer, dentro, EMPADRONADO, DESCUBIERTO };
 })();
 if (typeof module !== 'undefined') module.exports = Bloques;
+</script>
+<script>/* ===== Editor DXF: geometría para el visor, división de polígonos y escritura de los cambios ===== */
+const Editor = (() => {
+  const EPS = 1e-6;
+
+  // ---------- Lectura de entidades del espacio modelo para dibujar ----------
+  // Devuelve trazos (polilíneas en coordenadas del dibujo) y textos, con capa y color ACI resueltos.
+  function geometria(txt) {
+    const L = txt.split(/\r?\n/);
+    const capas = {}; const bloques = {}; const ents = [];
+    let sec = null, blq = null, i = 0;
+    const leerEnt = j => { // grupos de la entidad que empieza en j (L[j] = '0')
+      const g = []; let k = j + 2;
+      for (; k + 1 < L.length && parseInt(L[k], 10) !== 0; k += 2) g.push([parseInt(L[k], 10), L[k + 1]]);
+      return { tipo: L[j + 1].trim(), g, fin: k };
+    };
+    while (i + 1 < L.length) {
+      const c = parseInt(L[i], 10), v = L[i + 1].trim();
+      if (c !== 0) { i += 2; continue; }
+      if (v === 'SECTION') { sec = (L[i + 3] || '').trim(); i += 4; continue; }
+      if (v === 'ENDSEC') { sec = null; i += 2; continue; }
+      const e = leerEnt(i);
+      if (sec === 'TABLES' && e.tipo === 'LAYER') {
+        const n = (e.g.find(([k]) => k === 2) || [, ''])[1].trim().toUpperCase();
+        const col = e.g.find(([k]) => k === 62); const fl = e.g.find(([k]) => k === 70);
+        capas[n] = { color: col ? Math.abs(+col[1]) : 7, apagada: col ? +col[1] < 0 : false, congelada: fl ? (+fl[1] & 1) === 1 : false };
+      } else if (sec === 'BLOCKS') {
+        if (e.tipo === 'BLOCK') { const n = (e.g.find(([k]) => k === 2) || [, ''])[1].trim(); blq = bloques[n.toLowerCase()] = []; }
+        else if (e.tipo === 'ENDBLK') blq = null;
+        else if (blq) blq.push(e);
+      } else if (sec === 'ENTITIES') ents.push(e);
+      i = e.fin;
+    }
+    // POLYLINE + VERTEX → una sola entidad con puntos
+    const plano = [];
+    for (let k = 0; k < ents.length; k++) {
+      const e = ents[k];
+      if (e.tipo === 'POLYLINE') {
+        const verts = [];
+        while (ents[k + 1] && ents[k + 1].tipo === 'VERTEX') { k++; verts.push(ents[k].g); }
+        if (ents[k + 1] && ents[k + 1].tipo === 'SEQEND') k++;
+        e.verts = verts;
+      }
+      if (e.tipo === 'ATTRIB' || e.tipo === 'SEQEND' || e.tipo === 'VERTEX') continue;
+      plano.push(e);
+    }
+    const trazos = [], textos = [];
+    const val = (g, k, d = 0) => { const p = g.find(([c]) => c === k); return p ? p[1] : d; };
+    const num = (g, k, d = 0) => +val(g, k, d);
+    const colorDe = (g, capa, colBloque) => {
+      const c = parseInt(val(g, 62, 256), 10);
+      if (c === 0) return colBloque ?? 7;
+      if (c === 256 || isNaN(c)) return capas[capa]?.color ?? 7;
+      return Math.abs(c);
+    };
+    const T = (m, [x, y]) => [m.a * x + m.c * y + m.e, m.b * x + m.d * y + m.f];
+    const componer = (m, n) => ({ a: m.a * n.a + m.c * n.b, b: m.b * n.a + m.d * n.b, c: m.a * n.c + m.c * n.d, d: m.b * n.c + m.d * n.d, e: m.a * n.e + m.c * n.f + m.e, f: m.b * n.e + m.d * n.f + m.f });
+    const I = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+    const arco = (cx, cy, r, a0, a1) => { // grados, antihorario
+      let d = a1 - a0; while (d <= 0) d += 360;
+      const n = Math.max(8, Math.ceil(d / 6)), out = [];
+      for (let s = 0; s <= n; s++) { const a = (a0 + d * s / n) * Math.PI / 180; out.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); }
+      return out;
+    };
+    function emitir(lista, m, capaPadre, colPadre, prof, extra) {
+      for (const e of lista) {
+        if (num(e.g, 67) === 1) continue; // espacio papel
+        let capa = val(e.g, 8, '0').trim().toUpperCase();
+        if (capa === '0' && capaPadre) capa = capaPadre;
+        if (capas[capa]?.apagada || capas[capa]?.congelada) continue;
+        const color = colorDe(e.g, capa, colPadre);
+        const base = { capa, color, h: val(e.g, 5, '').trim(), ...extra };
+        const pts = [];
+        if (e.tipo === 'LINE') pts.push([num(e.g, 10), num(e.g, 20)], [num(e.g, 11), num(e.g, 21)]);
+        else if (e.tipo === 'LWPOLYLINE' || e.tipo === 'POLYLINE') {
+          let vs = [];
+          if (e.tipo === 'LWPOLYLINE') { for (const [k, v] of e.g) { if (k === 10) vs.push([+v, 0, 0]); else if (k === 20 && vs.length) vs[vs.length - 1][1] = +v; else if (k === 42 && vs.length) vs[vs.length - 1][2] = +v; } }
+          else vs = e.verts.map(g => [num(g, 10), num(g, 20), num(g, 42)]);
+          const cerr = (num(e.g, 70) & 1) === 1;
+          const n = cerr ? vs.length : vs.length - 1;
+          for (let k = 0; k < n; k++) pts.push(...seg(vs[k], vs[(k + 1) % vs.length]).slice(k ? 1 : 0));
+        } else if (e.tipo === 'CIRCLE') pts.push(...arco(num(e.g, 10), num(e.g, 20), num(e.g, 40), 0, 360));
+        else if (e.tipo === 'ARC') pts.push(...arco(num(e.g, 10), num(e.g, 20), num(e.g, 40), num(e.g, 50), num(e.g, 51)));
+        else if (e.tipo === 'TEXT' || e.tipo === 'MTEXT') {
+          let t = e.g.filter(([k]) => k === 3 || k === 1).map(([, v]) => v).join('');
+          t = t.replace(/\\[A-Za-z][^;\\]*;/g, '').replace(/\\P/g, ' ').replace(/[{}]/g, '').replace(/%%[cC]/g, 'Ø').replace(/%%[dD]/g, '°').replace(/%%[pP]/g, '±');
+          const al = e.tipo === 'TEXT' && (num(e.g, 72) || num(e.g, 73)) ? [num(e.g, 11), num(e.g, 21)] : [num(e.g, 10), num(e.g, 20)];
+          const ah = e.tipo === 'TEXT' ? ['start', 'middle', 'end', 'middle', 'middle', 'start'][num(e.g, 72)] || 'start' : ['start', 'start', 'middle', 'end'][((num(e.g, 71, 1) - 1) % 3) + 1] || 'start';
+          const p = T(m, al), esc = Math.hypot(m.a, m.b);
+          const rot = (e.tipo === 'TEXT' ? num(e.g, 50) : Math.atan2(num(e.g, 21), num(e.g, 11, 1)) * 180 / Math.PI) + Math.atan2(m.b, m.a) * 180 / Math.PI;
+          if (t.trim()) textos.push({ ...base, x: p[0], y: p[1], alto: num(e.g, 40, 1) * esc, rot, texto: t, ancla: ah });
+          continue;
+        } else if ((e.tipo === 'INSERT' || e.tipo === 'DIMENSION') && prof < 4) {
+          const def = bloques[val(e.g, 2, '').trim().toLowerCase()];
+          if (!def) continue;
+          const sx = e.tipo === 'INSERT' ? num(e.g, 41, 1) : 1, sy = e.tipo === 'INSERT' ? num(e.g, 42, 1) : 1;
+          const r = (e.tipo === 'INSERT' ? num(e.g, 50) : 0) * Math.PI / 180;
+          const ix = e.tipo === 'INSERT' ? num(e.g, 10) : 0, iy = e.tipo === 'INSERT' ? num(e.g, 20) : 0;
+          const n = { a: Math.cos(r) * sx, b: Math.sin(r) * sx, c: -Math.sin(r) * sy, d: Math.cos(r) * sy, e: ix, f: iy };
+          emitir(def, componer(m, n), capa, color, prof + 1, prof === 0 ? { bloque: val(e.g, 2, '').trim(), hBloque: base.h } : extra);
+          continue;
+        } else continue;
+        if (pts.length > 1) trazos.push({ ...base, pts: pts.map(p => T(m, p)) });
+      }
+    }
+    emitir(plano, I, null, null, 0, {});
+    return { trazos, textos, capas };
+  }
+
+  // segmento (con bulge) aplanado
+  function seg(a, b) {
+    const out = [[a[0], a[1]]];
+    const bu = a[2] || 0;
+    if (Math.abs(bu) > 1e-9) {
+      const th = 4 * Math.atan(bu), [x1, y1] = a, [x2, y2] = b;
+      const c = Math.hypot(x2 - x1, y2 - y1), r = c / (2 * Math.sin(th / 2));
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, h = r * Math.cos(th / 2);
+      const nx = -(y2 - y1) / c, ny = (x2 - x1) / c;
+      const cx = mx + nx * h, cy = my + ny * h, a1 = Math.atan2(y1 - cy, x1 - cx);
+      const n = Math.max(4, Math.ceil(Math.abs(th) / 0.08));
+      for (let s = 1; s < n; s++) { const t = a1 + th * s / n; out.push([cx + Math.abs(r) * Math.cos(t), cy + Math.abs(r) * Math.sin(t)]); }
+    }
+    out.push([b[0], b[1]]);
+    return out;
+  }
+
+  // ---------- Geometría de arcos (bulge) ----------
+  function arcoDe(a, b) { // centro, radio, ángulo inicial y barrido del tramo a→b con bulge a[2]
+    const th = 4 * Math.atan(a[2]);
+    const c = Math.hypot(b[0] - a[0], b[1] - a[1]), r = c / (2 * Math.sin(th / 2));
+    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, h = r * Math.cos(th / 2);
+    const nx = -(b[1] - a[1]) / c, ny = (b[0] - a[0]) / c;
+    const cx = mx + nx * h, cy = my + ny * h;
+    return { cx, cy, r: Math.abs(r), a0: Math.atan2(a[1] - cy, a[0] - cx), th };
+  }
+  // Punto más cercano a p sobre el tramo i del anillo (con arcos). Devuelve { p, t, d }
+  function cercanoEnTramo(vs, i, p) {
+    const a = vs[i], b = vs[(i + 1) % vs.length];
+    if (Math.abs(a[2] || 0) < 1e-9) {
+      const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+      let t = l2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2 : 0; t = Math.max(0, Math.min(1, t));
+      const q = [a[0] + t * dx, a[1] + t * dy];
+      return { p: q, t, d: Math.hypot(p[0] - q[0], p[1] - q[1]) };
+    }
+    const A = arcoDe(a, b);
+    let ang = Math.atan2(p[1] - A.cy, p[0] - A.cx) - A.a0;
+    // normalizar al sentido del barrido
+    const s = Math.sign(A.th); ang *= s; while (ang < 0) ang += 2 * Math.PI; while (ang > 2 * Math.PI) ang -= 2 * Math.PI;
+    let t = ang / Math.abs(A.th);
+    if (t > 1) t = (ang - Math.abs(A.th) > 2 * Math.PI - ang) ? 0 : 1;
+    const q = puntoEnTramo(vs, i, t);
+    return { p: q, t, d: Math.hypot(p[0] - q[0], p[1] - q[1]) };
+  }
+  function puntoEnTramo(vs, i, t) {
+    const a = vs[i], b = vs[(i + 1) % vs.length];
+    if (Math.abs(a[2] || 0) < 1e-9) return [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])];
+    const A = arcoDe(a, b), ang = A.a0 + A.th * t;
+    return [A.cx + A.r * Math.cos(ang), A.cy + A.r * Math.sin(ang)];
+  }
+
+  // ---------- Dividir un polígono cerrado con una línea de corte ----------
+  // vs: vértices [x, y, bulge] del anillo; A y B: { i, t } posiciones sobre el borde (tramo i, fracción t);
+  // medio: puntos interiores del corte. Devuelve dos anillos que suman la superficie original.
+  function dividir(vs, A, B, medio = []) {
+    let anillo = vs.map(v => [v[0], v[1], v[2] || 0]);
+    // insertar un vértice sobre el borde; devuelve su índice
+    const insertar = pos => {
+      if (pos.t < 1e-7) return pos.i;
+      if (pos.t > 1 - 1e-7) return (pos.i + 1) % anillo.length;
+      const a = anillo[pos.i], p = puntoEnTramo(anillo, pos.i, pos.t);
+      const th = 4 * Math.atan(a[2]);
+      const b1 = Math.tan(th * pos.t / 4), b2 = Math.tan(th * (1 - pos.t) / 4);
+      a[2] = Math.abs(a[2]) < 1e-12 ? 0 : b1;
+      anillo.splice(pos.i + 1, 0, [p[0], p[1], Math.abs(th) < 1e-12 ? 0 : b2]);
+      return pos.i + 1;
+    };
+    // insertar primero el que está más adelante para no correr índices
+    const orden = (A.i > B.i || (A.i === B.i && A.t > B.t));
+    let iA, iB;
+    if (orden) { iA = insertar(A); iB = insertar(B); if (iB <= iA && !(B.t < 1e-7 || B.t > 1 - 1e-7)) iA++; }
+    else { iB = insertar(B); iA = insertar(A); if (iA <= iB && !(A.t < 1e-7 || A.t > 1 - 1e-7)) iB++; }
+    if (iA === iB) throw new Error('El corte tiene que empezar y terminar en puntos distintos del borde.');
+    const n = anillo.length;
+    const tramo = (desde, hasta) => { const out = []; for (let k = desde; ; k = (k + 1) % n) { out.push(anillo[k].slice()); if (k === hasta) break; } return out; };
+    const r1 = tramo(iA, iB); r1[r1.length - 1][2] = 0;
+    const r2 = tramo(iB, iA); r2[r2.length - 1][2] = 0;
+    const m = medio.map(p => [p[0], p[1], 0]);
+    const a1 = [...r1, ...m.slice().reverse()];
+    const a2 = [...r2, ...m];
+    return [limpiar(a1), limpiar(a2)];
+  }
+  // quita vértices repetidos consecutivos
+  function limpiar(r) {
+    const out = [];
+    for (const p of r) { const q = out[out.length - 1]; if (!q || Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-3) out.push(p); else if (Math.abs(p[2]) > Math.abs(q[2])) q[2] = p[2]; }
+    while (out.length > 1 && Math.hypot(out[0][0] - out[out.length - 1][0], out[0][1] - out[out.length - 1][1]) < 1e-3) out.pop();
+    return out;
+  }
+  const area = vs => Math.abs(Engine.signedArea(vs));
+
+  // ¿el corte cruza el borde fuera de sus extremos? (validación)
+  function corteValido(vs, camino) {
+    const fl = Engine.flatten(vs);
+    const cruza = (p1, p2, p3, p4) => {
+      const d = (p4[1] - p3[1]) * (p2[0] - p1[0]) - (p4[0] - p3[0]) * (p2[1] - p1[1]);
+      if (Math.abs(d) < 1e-12) return false;
+      const ua = ((p4[0] - p3[0]) * (p1[1] - p3[1]) - (p4[1] - p3[1]) * (p1[0] - p3[0])) / d;
+      const ub = ((p2[0] - p1[0]) * (p1[1] - p3[1]) - (p2[1] - p1[1]) * (p1[0] - p3[0])) / d;
+      return ua > 1e-6 && ua < 1 - 1e-6 && ub > 1e-6 && ub < 1 - 1e-6;
+    };
+    for (let k = 0; k + 1 < camino.length; k++) {
+      const mid = [(camino[k][0] + camino[k + 1][0]) / 2, (camino[k][1] + camino[k + 1][1]) / 2];
+      if (!Bloques.dentro(mid, fl)) return false;
+      for (let j = 0; j < fl.length; j++) if (cruza(camino[k], camino[k + 1], fl[j], fl[(j + 1) % fl.length])) return false;
+    }
+    return true;
+  }
+
+  // ---------- Escritura: reemplaza polilíneas por handle y agrega las nuevas ----------
+  // cambios: { mod: Map(handle → vértices), nuevos: [{ id, base: handle original, verts }] }
+  // Devuelve { txt, handles: { id → handle asignado } }
+  function aplicar(txt, cambios) {
+    const eol = txt.includes('\r\n') ? '\r\n' : '\n';
+    const L = txt.split(/\r?\n/);
+    let sec = null, finEnt = null, seedLinea = null;
+    const ents = {}; // handle → { ini, fin }
+    let seed = 0, maxH = 0;
+    for (let i = 0; i + 1 < L.length; i += 2) {
+      const c = parseInt(L[i], 10), v = L[i + 1];
+      if ((c === 5 || c === 105) && sec !== 'HEADER') maxH = Math.max(maxH, parseInt(v, 16) || 0);
+      if (c === 0 && v === 'SECTION') { sec = (L[i + 3] || '').trim(); continue; }
+      if (c === 0 && v === 'ENDSEC') { if (sec === 'ENTITIES') finEnt = i; sec = null; continue; }
+      if (sec === 'HEADER' && c === 9 && v.trim() === '$HANDSEED') { seedLinea = i + 3; seed = parseInt(L[i + 3], 16) || 0; }
+      if (sec === 'ENTITIES' && c === 0 && v === 'LWPOLYLINE') {
+        let k = i + 2, h = null;
+        for (; k + 1 < L.length && parseInt(L[k], 10) !== 0; k += 2) if (parseInt(L[k], 10) === 5) h = L[k + 1].trim();
+        if (h) ents[h] = { ini: i, fin: k };
+      }
+    }
+    const num = v => (Math.round(v * 1e9) / 1e9).toString();
+    // reconstruye una LWPOLYLINE con otros vértices, conservando el resto de los grupos
+    const reconstruir = (ini, fin, verts, hNuevo) => {
+      const out = [];
+      let vertDone = false, enGrupo = false;
+      for (let k = ini; k < fin; k += 2) {
+        const c = parseInt(L[k], 10), v = L[k + 1];
+        if (hNuevo) {
+          if (c === 5) { out.push(L[k], hNuevo); continue; }
+          // reactores y diccionarios ({ACAD_REACTORS … }, {ACAD_XDICTIONARY … }) pertenecen al original: no se copian
+          if (c === 102) { enGrupo = v.trim().startsWith('{'); continue; }
+          if (enGrupo || c === 360) continue;
+        }
+        if (c === 90) { out.push(L[k], v.replace(/\d+/, String(verts.length))); continue; }
+        if (c === 10 || c === 20 || c === 40 || c === 41 || c === 42 || c === 91) {
+          if (!vertDone) {
+            vertDone = true;
+            for (const p of verts) {
+              out.push(' 10', num(p[0]), ' 20', num(p[1]));
+              if (Math.abs(p[2] || 0) > 1e-12) out.push(' 42', num(p[2]));
+            }
+          }
+          continue;
+        }
+        out.push(L[k], v);
+      }
+      return out;
+    };
+    const reemplazos = []; // [ini, fin, líneas]
+    for (const [h, verts] of cambios.mod || []) {
+      const e = ents[h]; if (!e) throw new Error('No se encontró la polilínea ' + h);
+      reemplazos.push([e.ini, e.fin, reconstruir(e.ini, e.fin, verts)]);
+    }
+    const agregar = [], handles = {};
+    let h = Math.max(seed, maxH + 1);
+    for (const n of cambios.nuevos || []) {
+      const e = ents[n.base]; if (!e) throw new Error('No se encontró la polilínea ' + n.base);
+      const hn = (h++).toString(16).toUpperCase(); handles[n.id] = hn;
+      agregar.push(...reconstruir(e.ini, e.fin, n.verts, hn));
+    }
+    // aplicar de atrás hacia adelante
+    let out = L.slice();
+    out.splice(finEnt, 0, ...agregar);
+    reemplazos.sort((a, b) => b[0] - a[0]).forEach(([ini, fin, lineas]) => out.splice(ini, fin - ini, ...lineas));
+    if (seedLinea != null && (cambios.nuevos || []).length) out[seedLinea] = h.toString(16).toUpperCase();
+    return { txt: out.join(eol), handles };
+  }
+
+  return { geometria, dividir, corteValido, cercanoEnTramo, puntoEnTramo, aplicar, area, seg };
+})();
+if (typeof module !== 'undefined') module.exports = Editor;
 </script>
 <script>
 const SAMPLE_DXF = {"parcela":[{"layer":"09-M-PARCELA","color":5,"area":141.8883193731308,"arco":false,"cerrado":true,"dib":[[18167.442,69831.199],[18161.893,69846.579],[18153.665,69844.042],[18159.285,69828.412]]}],"titulo":[{"layer":"14-M-TITULO","color":2,"area":142.53187775611877,"arco":false,"cerrado":true,"dib":[[18153.617,69844.028],[18159.22,69828.444],[18167.438,69831.145],[18161.893,69846.579]]}],"excedente":[],"excedenteN":0,"sup":[{"layer":"M-M-PB-SUP","color":1,"area":111.66646207856597,"arco":true,"cerrado":true,"dib":[[18160.107,69829.553],[18159.014,69829.165],[18153.665,69844.042],[18161.893,69846.579],[18165.839,69835.64],[18160.309,69833.644],[18161.011,69831.697],[18161.06,69831.582],[18161.099,69831.464],[18161.129,69831.342],[18161.149,69831.219],[18161.159,69831.095],[18161.159,69830.97],[18161.149,69830.845],[18161.129,69830.722],[18161.099,69830.6],[18161.06,69830.482],[18161.012,69830.367],[18160.954,69830.256],[18160.888,69830.15],[18160.813,69830.05],[18160.731,69829.956],[18160.642,69829.869],[18160.546,69829.789],[18160.443,69829.717],[18160.336,69829.654],[18160.223,69829.599]],"planta":"PB"},{"layer":"M-M-01P-SUP","color":3,"area":12.880000114440918,"arco":false,"cerrado":true,"dib":[[18162.378,69834.391],[18165.839,69835.64],[18164.652,69838.932],[18161.19,69837.683]],"planta":"01P"},{"layer":"M-M-01P-SUP","color":1,"area":88.96193671226501,"arco":false,"cerrado":true,"dib":[[18161.893,69846.579],[18164.652,69838.932],[18161.19,69837.683],[18162.378,69834.391],[18157.737,69832.717],[18153.665,69844.042]],"planta":"01P"},{"layer":"M-M-01P-SUP","color":3,"area":9.824525490277185,"arco":true,"cerrado":true,"dib":[[18160.107,69829.553],[18159.014,69829.165],[18157.737,69832.717],[18160.309,69833.644],[18161.011,69831.697],[18161.06,69831.582],[18161.099,69831.464],[18161.129,69831.342],[18161.149,69831.219],[18161.159,69831.095],[18161.159,69830.97],[18161.149,69830.845],[18161.129,69830.722],[18161.099,69830.6],[18161.06,69830.482],[18161.012,69830.367],[18160.954,69830.256],[18160.888,69830.15],[18160.813,69830.05],[18160.731,69829.956],[18160.642,69829.869],[18160.546,69829.789],[18160.443,69829.717],[18160.336,69829.654],[18160.223,69829.599]],"planta":"01P"},{"layer":"M-M-PB-SUP","color":3,"area":30.221857413765974,"arco":true,"cerrado":true,"dib":[[18160.107,69829.553],[18160.223,69829.599],[18160.336,69829.654],[18160.443,69829.717],[18160.546,69829.789],[18160.642,69829.869],[18160.731,69829.956],[18160.813,69830.05],[18160.888,69830.15],[18160.954,69830.256],[18161.012,69830.367],[18161.06,69830.482],[18161.099,69830.6],[18161.129,69830.722],[18161.149,69830.845],[18161.159,69830.97],[18161.159,69831.095],[18161.149,69831.219],[18161.129,69831.342],[18161.099,69831.464],[18161.06,69831.582],[18161.011,69831.697],[18160.309,69833.644],[18165.839,69835.64],[18167.442,69831.199],[18159.285,69828.412],[18159.014,69829.165]],"planta":"PB"},{"layer":"M-M-02P-SUP","color":3,"area":71.34067499637604,"arco":false,"cerrado":true,"dib":[[18161.591,69836.573],[18161.19,69837.683],[18164.652,69838.932],[18161.893,69846.579],[18153.665,69844.042],[18154.775,69840.954],[18156.46,69841.559],[18156.984,69840.101],[18155.3,69839.495],[18156.552,69836.013],[18159.262,69836.988],[18159.662,69835.878]],"planta":"02P"},{"layer":"M-M-02P-SUP","color":1,"area":2.774500012397766,"arco":false,"cerrado":true,"dib":[[18154.775,69840.954],[18156.46,69841.559],[18156.984,69840.101],[18155.3,69839.495]],"planta":"02P"}],"murosN":10,"avisos":[],"numPuerta":["N° 3922"],"calles":["CHIVILCOY","BOGOTA","MERCEDES","BACACAY","BOGOTA"],"manzana":[{"layer":"07-M-MANZANA","color":7,"area":11096.656919002533,"arco":false,"cerrado":true,"dib":[[18070.718,69818.471],[18171.258,69849.466],[18209.172,69751.006],[18108.483,69719.761],[18070.718,69818.471]]}],"layouts":["077-092-001b"],"nparc":["001b"]};
@@ -2292,7 +2664,8 @@ function bytesATexto(u8){
 }
 function bloquesAplican(){
   if (!state.dxf || !state.bloq || !state.bloq.items) return false;
-  return Engine.calcular(state.dxf, state.cert, {cerramiento: state.cerramiento}).edificado.estado === 'ok';
+  const e = Engine.calcular(state.dxf, state.cert, {cerramiento: state.cerramiento}).edificado.estado;
+  return e === 'ok' || e === 'baja';
 }
 function marcasBloques(pl, sw){
   if (!bloquesAplican() || state.bloq.faltan.length) return '';
@@ -2305,11 +2678,15 @@ function vistaBloques(){
   $('secDxf').hidden = false;
   if (!state.dxfTxt){ box.innerHTML = '<p class="nota">En el ejemplo no se puede descargar el DXF. Cargá tu archivo de relevamiento para completar los bloques automáticamente.</p>'; return; }
   const E = Engine.calcular(d, state.cert, {cerramiento: state.cerramiento}).edificado;
-  if (E.estado === 'alta' || E.estado === 'baja'){
-    box.innerHTML = `<p>Hay superficie a declarar ante AGIP (${E.estado} de ${f(E.m2)} m²), así que no toda la superficie es empadronada. Por ahora, en este caso los bloques se completan en AutoCAD.</p>`;
+  const B = state.bloq;
+  if (B && B.version !== 'AC1024'){
+    const nom = {AC1009:'R12',AC1012:'R13',AC1014:'R14',AC1015:'2000',AC1018:'2004',AC1021:'2007',AC1027:'2013',AC1032:'2018'}[B.version] || 'desconocida';
+    box.innerHTML = `<p>El DXF está guardado en versión AutoCAD ${nom} (${esc(B.version||'?')}) y el archivo para presentar tiene que ser <b>AutoCAD 2010</b>. Guardalo como «AutoCAD 2010/LT2010 DXF» y volvé a cargarlo para completar los bloques.</p>`;
     return;
   }
-  const B = state.bloq;
+  if (E.estado === 'alta' && state.cert){ vistaEditor(box, E); return; }
+  if (E.estado !== 'ok' && E.estado !== 'baja'){ box.innerHTML = '<p class="nota">Cargá el certificado de AGIP para completar los bloques.</p>'; return; }
+  if (box.querySelector('#edSvg')) box.innerHTML = '';
   if (!B || !B.items.length){ box.innerHTML = '<p class="nota">No hay polígonos de superficie cubierta, semicubierta o descubierta en las capas M-M-##-SUP.</p>'; return; }
   if (B.faltan.length){
     box.innerHTML = `<p>El DXF no tiene la definición de ${B.faltan.map(n => '<b>' + n + '</b>').join(' ni de ')}. Usá la plantilla oficial (Detalle Layers Bloques v4) para que el archivo incluya esos bloques.</p>`;
@@ -2322,9 +2699,9 @@ function vistaBloques(){
   const tabla = `<div class="tscroll"><table class="wt"><thead><tr><th>Planta</th><th class="r">form_empadronado</th><th class="r">form_descubierto</th><th class="r">Ya tenían bloque</th></tr></thead><tbody>${filas}</tbody></table></div>`;
   if (!nuevos.length){ box.innerHTML = `<p>Todos los polígonos de superficie ya tienen su bloque. No hace falta completar nada.</p>${tabla}`; return; }
   box.innerHTML = `
-    <p>La superficie relevada está dentro de la tolerancia, así que toda la superficie construida es superficie empadronada. Se ${nuevos.length>1?'agregan':'agrega'} <b>${nuevos.length} bloque${nuevos.length>1?'s':''}</b>: <b>form_empadronado</b> en los polígonos cubiertos y semicubiertos y <b>form_descubierto</b> en los descubiertos, cada uno en el centro de su polígono y en la capa de su planta. Su ubicación se ve en los planos del paso 4.</p>
+    <p>${E.estado === 'baja' ? `Corresponde informar una <b>baja de ${f(E.m2)} m²</b> ante AGIP; la baja solo se informa y no se dibuja, así que toda la superficie relevada lleva bloque de superficie empadronada.` : 'La superficie relevada está dentro de la tolerancia, así que toda la superficie construida es superficie empadronada.'} Se ${nuevos.length>1?'agregan':'agrega'} <b>${nuevos.length} bloque${nuevos.length>1?'s':''}</b>: <b>form_empadronado</b> en los polígonos cubiertos y semicubiertos y <b>form_descubierto</b> en los descubiertos, cada uno en el centro de su polígono y en la capa de su planta. Su ubicación se ve en los planos del paso 4.</p>
     ${tabla}
-    <div class="bq-row"><button class="btn" id="bDxf" type="button">Descargar DXF completado</button><span class="st" id="dxfStatus">El resto del archivo queda igual.</span></div>`;
+    <div class="bq-row"><button class="btn" id="bDxf" type="button">Descargar DXF completado</button><span class="st" id="dxfStatus">Formato AutoCAD 2010 DXF. El resto del archivo queda igual.</span></div>`;
   $('bDxf').addEventListener('click', descargarDxf);
 }
 async function descargarDxf(){
@@ -2334,6 +2711,350 @@ async function descargarDxf(){
     const nombre = state.dxfName.replace(/\.dxf$/i, '') + '_bloques.dxf';
     await guardar(nombre, new Blob([bytes], {type: 'application/dxf'}), 'dxfStatus');
     evento('dxf-bloques', 'DXF completado con bloques');
+  } catch(e){ $('dxfStatus').textContent = 'No se pudo generar el DXF: ' + (e.message || e); console.error(e); }
+}
+
+/* ---------- Editor para el alta: dividir polígonos y marcar la superficie a declarar ---------- */
+const TIPOS_FORM = [
+  ['1','01 · Vivienda unifamiliar'], ['2','02 · Vivienda multifamiliar'], ['4','04 · Oficinas / establecimientos educacionales'],
+  ['5','05 · Negocios / centros de compras / galerías'], ['6','06 · Cine / teatro / centro cultural / museo'], ['8','08 · Garajes / cocheras'],
+  ['9','09 · Mercados / supermercados'], ['10','10 · Hoteles / geriátricos'], ['13','13'], ['14','14 · Industria / fábrica / taller'],
+  ['15','15 · Depósitos'], ['16','16 · Hospital / sanatorio / clínica'], ['17','17 · Consultorio / laboratorio'], ['18','18 · Estación de servicio'],
+];
+const ACI_ED = {1:'#d62828',2:'#c99a00',3:'#2a9d5c',4:'#1fa5b8',5:'#2f5fd0',6:'#b0379b',7:'var(--ink)',8:'#8a96a3',9:'#b9c2cb',30:'#e07b1f',52:'#8a5a2b',104:'#7b3fa0',150:'#4aa3df',200:'#888',220:'#888',32:'#999',204:'#2f5fd0'};
+const colorAci = c => ACI_ED[c] || '#7d8a96';
+const RE_PLANTA_CAPA = /-(PB|\d{2}[PSE])-/i;
+const aBytes = txt => Uint8Array.from(txt, ch => ch.charCodeAt(0) & 255);
+
+function edCargar(txt){
+  const ed = state.ed;
+  ed.txt = txt;
+  ed.dxf = Engine.analizar(aBytes(txt).buffer);
+  ed.sup = ed.dxf.sup;
+  ed.geo = Editor.geometria(txt);
+  ed.plantas = [...new Set(ed.sup.map(p => p.planta))];
+  if (!ed.plantas.includes(ed.planta)) ed.planta = ed.plantas[0];
+  for (const h of [...ed.decl.keys()]) if (!ed.sup.some(p => p.h === h)) ed.decl.delete(h);
+}
+function edIniciar(){
+  state.ed = { txt:null, decl:new Map(), undo:[], herr:'sel', sel:null, camino:[], A:null, view:null, planta:null, tipoDef:'', nformDef:'1', msg:'' };
+  edCargar(state.dxfTxt);
+}
+const edPolys = () => state.ed.sup.filter(p => p.planta === state.ed.planta);
+const esConstr = p => Bloques.EMPADRONADO.has(p.color);
+
+function vistaEditor(box, E){
+  if (!state.ed || state.ed.base !== state.dxfTxt){ edIniciar(); state.ed.base = state.dxfTxt; }
+  const ed = state.ed;
+  ed.alta = E.m2; ed.agip = E.agip; ed.constr = E.tot.constr;
+  if (!box.querySelector('#edSvg')){
+    box.innerHTML = `
+      <p>Lo relevado supera a lo empadronado: corresponde declarar un <b>alta de ${f(E.m2)} m²</b>. Si el sector nuevo está dentro de un polígono más grande, usá <b>Dividir polígono</b> para separarlo; después seleccioná cada polígono nuevo y marcalo como <b>superficie a declarar</b>. Al descargar, esos polígonos llevan el bloque <b>form</b> y el resto <b>form_empadronado</b> o <b>form_descubierto</b>.</p>
+      <div class="ed">
+        <div class="ed-bar">
+          <div class="ed-tabs" id="edTabs" role="tablist"></div>
+          <div class="ed-tools">
+            <button type="button" class="tb" id="edSel" aria-pressed="true">Seleccionar</button>
+            <button type="button" class="tb" id="edDiv" aria-pressed="false">Dividir polígono</button>
+            <button type="button" class="tb" id="edUndo">Deshacer</button>
+            <button type="button" class="tb" id="edFit">Ajustar vista</button>
+          </div>
+        </div>
+        <div class="ed-main">
+          <div class="ed-view"><svg id="edSvg" tabindex="0" aria-label="Plano editable de la planta"></svg><div class="ed-hint" id="edHint"></div></div>
+          <aside class="ed-side" id="edSide"></aside>
+        </div>
+      </div>`;
+    $('edSel').onclick = () => edHerr('sel');
+    $('edDiv').onclick = () => edHerr('div');
+    $('edUndo').onclick = edDeshacer;
+    $('edFit').onclick = () => { ed.view = null; edDibujar(); };
+    edEventos($('edSvg'));
+  }
+  edTabs(); edDibujar(); edLateral();
+}
+function edTabs(){
+  const ed = state.ed;
+  $('edTabs').innerHTML = ed.plantas.map(p => `<button type="button" role="tab" class="tab" aria-selected="${p === ed.planta}" data-p="${p}">${Engine.NOMBRE_PLANTA(p)}</button>`).join('');
+  $('edTabs').querySelectorAll('button').forEach(b => b.onclick = () => { ed.planta = b.dataset.p; ed.sel = null; edCancelar(); ed.view = null; edTabs(); edDibujar(); edLateral(); });
+}
+function edHerr(h){
+  const ed = state.ed; ed.herr = h; edCancelar();
+  $('edSel').setAttribute('aria-pressed', h === 'sel'); $('edDiv').setAttribute('aria-pressed', h === 'div');
+  edHint(); edDibujar();
+}
+function edCancelar(){ const ed = state.ed; ed.camino = []; ed.A = null; ed.snap = null; }
+function edHint(t){
+  const ed = state.ed;
+  $('edHint').textContent = t || (ed.herr === 'div'
+    ? (ed.A ? 'Marcá puntos intermedios o terminá el corte sobre el borde del mismo polígono. Esc cancela.' : 'Hacé clic sobre el borde del polígono donde empieza el corte. Se engancha a vértices, puntos medios, prolongaciones e intersecciones.')
+    : 'Hacé clic en un polígono para ver sus datos y marcarlo. Rueda: zoom · arrastrar: desplazar.');
+}
+
+/* --- vista y coordenadas --- */
+function edAjustar(){
+  const ed = state.ed, svg = $('edSvg'), r = svg.getBoundingClientRect();
+  const pts = edPolys().flatMap(p => p.dib);
+  const par = ed.dxf.parcela.flatMap(p => p.dib);
+  const todos = pts.length ? pts.concat(par) : par;
+  if (!todos.length) { ed.view = { cx:0, cy:0, s:1 }; return; }
+  const xs = todos.map(p => p[0]), ys = todos.map(p => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const s = Math.min((r.width - 40) / Math.max(x1 - x0, 1e-3), (r.height - 40) / Math.max(y1 - y0, 1e-3));
+  ed.view = { cx:(x0 + x1) / 2, cy:(y0 + y1) / 2, s };
+}
+function edMundo(ev){ // pantalla → dibujo
+  const ed = state.ed, r = $('edSvg').getBoundingClientRect();
+  return [ed.view.cx + (ev.clientX - r.left - r.width / 2) / ed.view.s, ed.view.cy - (ev.clientY - r.top - r.height / 2) / ed.view.s];
+}
+
+/* --- dibujo --- */
+function edDibujar(){
+  const ed = state.ed, svg = $('edSvg');
+  if (!svg) return;
+  const r = svg.getBoundingClientRect();
+  if (!ed.view) edAjustar();
+  const v = ed.view, W = r.width, H = r.height;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const X = x => ((x - v.cx) * v.s + W / 2).toFixed(1), Y = y => (-(y - v.cy) * v.s + H / 2).toFixed(1);
+  const path = pts => 'M' + pts.map(p => X(p[0]) + ' ' + Y(p[1])).join('L');
+  const visible = capa => { const m = capa.match(RE_PLANTA_CAPA); return !m || m[1].toUpperCase() === ed.planta; };
+  let out = '';
+  // fondo: todo lo que no es polígono de superficie
+  const supH = new Set(ed.sup.map(p => p.h));
+  for (const t of ed.geo.trazos) {
+    if (!visible(t.capa) || (supH.has(t.h) && !t.bloque)) continue;
+    out += `<path d="${path(t.pts)}" fill="none" stroke="${colorAci(t.color)}" stroke-width="${t.bloque ? .8 : 1}" opacity="${t.bloque ? .9 : .75}"/>`;
+  }
+  for (const t of ed.geo.textos) {
+    if (!visible(t.capa)) continue;
+    const fs = t.alto * v.s; if (fs < 4) continue;
+    out += `<text x="${X(t.x)}" y="${Y(t.y)}" font-size="${fs.toFixed(1)}" text-anchor="${t.ancla}" transform="rotate(${(-t.rot).toFixed(2)} ${X(t.x)} ${Y(t.y)})" fill="${colorAci(t.color)}" opacity=".85">${esc(t.texto)}</text>`;
+  }
+  // polígonos de superficie de la planta
+  const pol = edPolys().slice().sort((a, b) => b.area - a.area);
+  for (const p of pol) {
+    const c = SW[Engine.COLORES[p.color]?.col] || '#999';
+    const dec = ed.decl.has(p.h), sel = ed.sel === p.h;
+    out += `<path class="ed-pol" data-h="${p.h}" d="${path(p.dib)}Z" fill="${dec ? 'url(#edRay)' : c}" fill-opacity="${dec ? 1 : .22}" stroke="${sel ? 'var(--ink)' : c}" stroke-width="${sel ? 2.6 : 1.4}"/>`;
+    if (dec) out += `<path d="${path(p.dib)}Z" fill="none" stroke="var(--bad)" stroke-width="${sel ? 2.6 : 1.8}" pointer-events="none"/>`;
+  }
+  // etiquetas de superficie
+  for (const p of pol) {
+    const c = Bloques.centro(p.dib); if (p.area * v.s * v.s < 900) continue;
+    out += `<text x="${X(c.x)}" y="${Y(c.y)}" class="ed-lbl" text-anchor="middle" dominant-baseline="middle" pointer-events="none">${f(p.area)} m²${ed.decl.has(p.h) ? ' · alta' : ''}</text>`;
+  }
+  // corte en curso
+  if (ed.herr === 'div' && ed.camino.length) {
+    const cam = ed.camino.concat(ed.snap ? [ed.snap.p] : []);
+    out += `<path d="${path(cam)}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="6 4" pointer-events="none"/>`;
+    cam.forEach(p => out += `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="3" fill="var(--accent)" pointer-events="none"/>`);
+  }
+  if (ed.herr === 'div' && ed.snap) {
+    const s = ed.snap, x = X(s.p[0]), y = Y(s.p[1]);
+    if (s.ray) out += `<path d="${path(s.ray)}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2 4" pointer-events="none"/>`;
+    out += `<rect x="${x - 6}" y="${y - 6}" width="12" height="12" fill="none" stroke="var(--accent)" stroke-width="2" pointer-events="none"/><text x="${+x + 10}" y="${+y - 10}" class="ed-snap" pointer-events="none">${s.tipo}</text>`;
+  }
+  svg.innerHTML = `<defs><pattern id="edRay" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="var(--bad)" fill-opacity=".14"/><line x1="0" y1="0" x2="0" y2="8" stroke="var(--bad)" stroke-width="2" stroke-opacity=".45"/></pattern></defs>` + out;
+}
+
+/* --- enganches (osnap) --- */
+function edEnganche(w, tolPx = 12){
+  const ed = state.ed, tol = tolPx / ed.view.s;
+  const pols = edPolys();
+  let mejor = null;
+  const prop = (p, tipo, prio, extra = {}) => { const d = Math.hypot(p[0] - w[0], p[1] - w[1]); if (d <= tol && (!mejor || prio < mejor.prio || (prio === mejor.prio && d < mejor.d))) mejor = { p, tipo, prio, d, ...extra }; };
+  for (const pl of pols) {
+    const vs = pl.pts;
+    vs.forEach(v => prop([v[0], v[1]], 'Extremo', 0));
+    for (let i = 0; i < vs.length; i++) if (!vs[i][2]) prop(Editor.puntoEnTramo(vs, i, .5), 'Punto medio', 2);
+  }
+  // con un punto ya marcado: prolongación de los lados que llegan a ese punto, perpendicular, e intersecciones
+  const P = ed.camino[ed.camino.length - 1];
+  if (P) {
+    const dirs = [];
+    for (const pl of pols) pl.pts.forEach((v, i) => {
+      if (Math.hypot(v[0] - P[0], v[1] - P[1]) > 1e-6) return;
+      const a = pl.pts[(i - 1 + pl.pts.length) % pl.pts.length], b = pl.pts[(i + 1) % pl.pts.length];
+      dirs.push([v[0] - a[0], v[1] - a[1]], [v[0] - b[0], v[1] - b[1]]);
+    });
+    const largo = 1e4;
+    for (const dv of dirs) {
+      const n = Math.hypot(dv[0], dv[1]); if (!n) continue;
+      const u = [dv[0] / n, dv[1] / n];
+      const t = (w[0] - P[0]) * u[0] + (w[1] - P[1]) * u[1];
+      if (t <= 0) continue;
+      const q = [P[0] + u[0] * t, P[1] + u[1] * t];
+      const ray = [P, [P[0] + u[0] * largo, P[1] + u[1] * largo]];
+      // intersección del rayo con los bordes
+      for (const pl of pols) { const vs = pl.pts; for (let i = 0; i < vs.length; i++) {
+        if (vs[i][2]) continue;
+        const a = vs[i], b = vs[(i + 1) % vs.length], den = u[0] * (b[1] - a[1]) - u[1] * (b[0] - a[0]);
+        if (Math.abs(den) < 1e-12) continue;
+        const tt = ((a[0] - P[0]) * (b[1] - a[1]) - (a[1] - P[1]) * (b[0] - a[0])) / den, s = ((a[0] - P[0]) * u[1] - (a[1] - P[1]) * u[0]) / den;
+        if (tt > 1e-6 && s >= -1e-9 && s <= 1 + 1e-9) prop([P[0] + u[0] * tt, P[1] + u[1] * tt], 'Intersección', 1, { ray: [P, [P[0] + u[0] * tt, P[1] + u[1] * tt]] });
+      } }
+      prop(q, 'Prolongación', 4, { ray: [P, q] });
+    }
+    // perpendicular a un borde desde P
+    for (const pl of pols) { const vs = pl.pts; for (let i = 0; i < vs.length; i++) {
+      if (vs[i][2]) continue;
+      const a = vs[i], b = vs[(i + 1) % vs.length], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+      if (!l2) continue;
+      const t = ((P[0] - a[0]) * dx + (P[1] - a[1]) * dy) / l2;
+      if (t <= 1e-6 || t >= 1 - 1e-6) continue;
+      const q = [a[0] + t * dx, a[1] + t * dy];
+      if (Math.hypot(q[0] - P[0], q[1] - P[1]) > 1e-6) prop(q, 'Perpendicular', 3, { ray: [P, q] });
+    } }
+  }
+  if (!mejor) for (const pl of pols) { const vs = pl.pts; for (let i = 0; i < vs.length; i++) { const r = Editor.cercanoEnTramo(vs, i, w); prop(r.p, 'Cercano', 5); } }
+  return mejor;
+}
+// posiciones (tramo, fracción) del punto p sobre los bordes de los polígonos de la planta
+function edSobreBorde(p){
+  const out = [];
+  for (const pl of edPolys()) {
+    const vs = pl.pts;
+    for (let i = 0; i < vs.length; i++) {
+      const r = Editor.cercanoEnTramo(vs, i, p);
+      if (r.d < 1e-4) { out.push({ h: pl.h, i, t: r.t > 1 - 1e-7 ? 1 : r.t < 1e-7 ? 0 : r.t }); }
+    }
+  }
+  return out;
+}
+
+/* --- eventos --- */
+function edEventos(svg){
+  let arrastre = null, movido = false;
+  svg.addEventListener('wheel', ev => {
+    ev.preventDefault();
+    const ed = state.ed, w = edMundo(ev), k = Math.exp(-ev.deltaY * 0.0015);
+    ed.view.s *= k; ed.view.cx = w[0] - (w[0] - ed.view.cx) / k; ed.view.cy = w[1] - (w[1] - ed.view.cy) / k;
+    edDibujar();
+  }, { passive: false });
+  svg.addEventListener('pointerdown', ev => { arrastre = { x: ev.clientX, y: ev.clientY, cx: state.ed.view.cx, cy: state.ed.view.cy }; movido = false; svg.setPointerCapture(ev.pointerId); });
+  svg.addEventListener('pointermove', ev => {
+    const ed = state.ed;
+    if (arrastre && (Math.abs(ev.clientX - arrastre.x) + Math.abs(ev.clientY - arrastre.y) > 4)) {
+      movido = true;
+      ed.view.cx = arrastre.cx - (ev.clientX - arrastre.x) / ed.view.s; ed.view.cy = arrastre.cy + (ev.clientY - arrastre.y) / ed.view.s;
+      edDibujar(); return;
+    }
+    if (ed.herr === 'div') { ed.snap = edEnganche(edMundo(ev)); if (!ed.snap && ed.camino.length) ed.snap = { p: edMundo(ev), tipo: '' }; edDibujar(); }
+  });
+  svg.addEventListener('pointerup', ev => {
+    const fue = movido; arrastre = null;
+    if (fue) return;
+    const ed = state.ed, w = edMundo(ev);
+    if (ed.herr === 'sel') {
+      const cand = edPolys().filter(p => Bloques.dentro(w, p.dib)).sort((a, b) => a.area - b.area)[0];
+      ed.sel = cand ? cand.h : null; edDibujar(); edLateral(); return;
+    }
+    edClicCorte(ed.snap && ed.snap.tipo ? ed.snap.p : w);
+  });
+  svg.addEventListener('keydown', ev => { if (ev.key === 'Escape') { edCancelar(); edHint(); edDibujar(); } });
+  svg.addEventListener('contextmenu', ev => { ev.preventDefault(); edCancelar(); edHint(); edDibujar(); });
+  new ResizeObserver(() => edDibujar()).observe(svg);
+}
+function edClicCorte(p){
+  const ed = state.ed;
+  const borde = edSobreBorde(p);
+  if (!ed.camino.length) {
+    if (!borde.length) { edHint('El corte tiene que empezar sobre el borde de un polígono de la planta.'); return; }
+    ed.camino = [p]; ed.A = borde; edHint(); edDibujar(); return;
+  }
+  // ¿termina sobre el borde del mismo polígono?
+  const comunes = borde.filter(b => ed.A.some(a => a.h === b.h));
+  if (comunes.length && Math.hypot(p[0] - ed.camino[0][0], p[1] - ed.camino[0][1]) > 1e-4) {
+    for (const b of comunes) {
+      const pl = ed.sup.find(s => s.h === b.h), a = ed.A.find(x => x.h === b.h);
+      const camino = ed.camino.concat([p]);
+      if (!Editor.corteValido(pl.pts, camino)) continue;
+      edAplicarCorte(pl, a, b, ed.camino.slice(1));
+      return;
+    }
+    edHint('Ese corte sale del polígono o lo cruza: tiene que ir por dentro, de borde a borde.');
+    return;
+  }
+  // punto intermedio: tiene que quedar dentro de alguno de los polígonos de partida
+  if (!ed.A.some(a => Bloques.dentro(p, ed.sup.find(s => s.h === a.h).dib))) { edHint('Los puntos intermedios tienen que quedar dentro del polígono que se divide.'); return; }
+  ed.camino.push(p); edDibujar();
+}
+function edAplicarCorte(pl, A, B, medio){
+  const ed = state.ed;
+  try {
+    const [r1, r2] = Editor.dividir(pl.pts, A, B, medio);
+    const a1 = Editor.area(r1), a2 = Editor.area(r2);
+    if (Math.abs(a1 + a2 - pl.area) > 0.005) throw new Error('las partes no suman la superficie original');
+    // la parte nueva (que queda seleccionada) es la que más se acerca a lo que falta declarar
+    const yaDecl = [...ed.decl.keys()].filter(h => h !== pl.h).reduce((a, h) => a + (ed.sup.find(s => s.h === h)?.area || 0), 0);
+    const falta = Math.max(ed.alta - yaDecl, 0);
+    const [queda, nueva] = Math.abs(a1 - falta) <= Math.abs(a2 - falta) ? [r2, r1] : [r1, r2];
+    const res = Editor.aplicar(ed.txt, { mod: new Map([[pl.h, queda]]), nuevos: [{ id: 'n', base: pl.h, verts: nueva }] });
+    ed.undo.push({ txt: ed.txt, decl: new Map(ed.decl) });
+    const dec = ed.decl.get(pl.h);
+    edCargar(res.txt);
+    if (dec) ed.decl.set(res.handles.n, { ...dec });
+    ed.sel = res.handles.n; edCancelar();
+    edHerr('sel'); edHint(`Polígono dividido en ${f(Editor.area(nueva))} m² y ${f(Editor.area(queda))} m². Quedó seleccionada la parte de ${f(Editor.area(nueva))} m², la más parecida a lo que falta declarar.`);
+    edLateral(); evento('editor-dividir', 'Editor: polígono dividido');
+  } catch(e){ edHint('No se pudo dividir: ' + (e.message || e)); console.error(e); }
+}
+function edDeshacer(){
+  const ed = state.ed, u = ed.undo.pop();
+  if (!u) { edHint('No hay cambios para deshacer.'); return; }
+  edCargar(u.txt); ed.decl = u.decl; ed.sel = null; edCancelar(); edDibujar(); edLateral(); edHint('Se deshizo el último cambio.');
+}
+
+/* --- panel lateral --- */
+function edLateral(){
+  const ed = state.ed, side = $('edSide'); if (!side) return;
+  const p = ed.sup.find(s => s.h === ed.sel);
+  let html = '';
+  if (p) {
+    const dec = ed.decl.get(p.h);
+    html += `<div class="ed-card"><div class="ed-k">Polígono seleccionado</div>
+      <div class="ed-v">${f(p.area)} m²</div>
+      <div class="ed-s">${esc(Engine.COLORES[p.color]?.nombre || 'Color ' + p.color)} · ${Engine.NOMBRE_PLANTA(p.planta)}</div>`;
+    if (esConstr(p)) {
+      html += `<label class="ed-chk"><input type="checkbox" id="edDec" ${dec ? 'checked' : ''}> Superficie a declarar (alta)</label>`;
+      if (dec) html += `
+        <label class="ed-f">Tipo de formulario (TIPO_FORM)<select id="edTipo"><option value="">Elegí el destino…</option>${TIPOS_FORM.map(([v, t]) => `<option value="${v}" ${dec.tipo === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+        <label class="ed-f">Nº de formulario (Nº_FORM)<input id="edNform" inputmode="numeric" value="${esc(dec.nform)}"></label>`;
+    } else html += `<p class="ed-s">Solo la superficie construida (cubierta, semicubierta y otras computables) se puede declarar.</p>`;
+    html += `</div>`;
+  } else html += `<div class="ed-card ed-s">Seleccioná un polígono en el plano.</div>`;
+  // resumen
+  const decl = [...ed.decl.entries()].map(([h, d]) => ({ p: ed.sup.find(s => s.h === h), d })).filter(x => x.p);
+  const sum = decl.reduce((a, x) => a + x.p.area, 0);
+  const nuevoAgip = ed.agip + sum, dif = ed.constr - nuevoAgip, pct = nuevoAgip ? dif * 100 / nuevoAgip : 0, ts = Engine.tsTitulo5(nuevoAgip);
+  const cierra = decl.length && Math.abs(pct) <= ts;
+  const faltaTipo = decl.some(x => !x.d.tipo || !String(x.d.nform).trim());
+  html += `<div class="ed-card"><div class="ed-k">Superficie a declarar</div>
+    <div class="ed-v">${f(sum)} <span class="ed-s">de ${f(ed.alta)} m²</span></div>
+    <div class="ed-s">AGIP + declarado: ${f(nuevoAgip)} m² · relevado ${f(ed.constr)} m² · diferencia ${f(pct)} % (TS ${ts} %)</div>
+    <div class="pill ${cierra ? 'ok' : 'warn'}">${!decl.length ? 'Todavía no marcaste polígonos' : cierra ? 'Cierra dentro de la tolerancia' : 'No cierra: revisá los polígonos marcados'}</div>
+    ${decl.length ? `<ol class="ed-list">${decl.map((x, i) => `<li><button type="button" data-h="${x.p.h}">Polígono ${i + 1}</button> · ${f(x.p.area)} m² · ${Engine.NOMBRE_PLANTA(x.p.planta)} · form ${esc(x.d.tipo || '¿?')}/${esc(x.d.nform || '¿?')}</li>`).join('')}</ol>` : ''}
+  </div>
+  <div class="ed-card"><button class="btn" id="bDxfAlta" type="button" ${!decl.length || faltaTipo ? 'disabled' : ''}>Descargar DXF completado</button>
+    <div class="ed-s" id="dxfStatus">${!decl.length ? 'Marcá al menos un polígono a declarar.' : faltaTipo ? 'Completá el tipo y el número de formulario de cada polígono.' : 'Formato AutoCAD 2010 DXF. El resto del archivo queda igual.'}</div></div>`;
+  side.innerHTML = html;
+  const chk = $('edDec');
+  if (chk) chk.onchange = () => { if (chk.checked) ed.decl.set(p.h, { tipo: ed.tipoDef, nform: ed.nformDef }); else ed.decl.delete(p.h); edDibujar(); edLateral(); };
+  if ($('edTipo')) $('edTipo').onchange = e => { ed.decl.get(p.h).tipo = ed.tipoDef = e.target.value; edLateral(); };
+  if ($('edNform')) $('edNform').onchange = e => { ed.decl.get(p.h).nform = ed.nformDef = e.target.value.trim(); edLateral(); };
+  side.querySelectorAll('.ed-list button').forEach(b => b.onclick = () => { const q = ed.sup.find(s => s.h === b.dataset.h); ed.planta = q.planta; ed.sel = q.h; edTabs(); edDibujar(); edLateral(); });
+  if ($('bDxfAlta')) $('bDxfAlta').onclick = descargarDxfAlta;
+}
+async function descargarDxfAlta(){
+  const ed = state.ed;
+  try {
+    const B = Bloques.proponer(ed.txt, ed.sup, ed.decl);
+    if (B.faltan.length) throw new Error('el DXF no tiene la definición del bloque ' + B.faltan.join(', '));
+    const txt = Bloques.escribir(ed.txt, B.items.filter(it => !it.existente));
+    const nombre = state.dxfName.replace(/\.dxf$/i, '') + '_bloques.dxf';
+    await guardar(nombre, new Blob([aBytes(txt)], {type: 'application/dxf'}), 'dxfStatus');
+    evento('dxf-alta', 'DXF completado con alta');
   } catch(e){ $('dxfStatus').textContent = 'No se pudo generar el DXF: ' + (e.message || e); console.error(e); }
 }
 
