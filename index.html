@@ -2278,7 +2278,10 @@ const Editor = (() => {
             }
             caminos.push(cm);
           }
-          if (caminos.length) rellenos.push({ ...base, solido, caminos: caminos.filter(c => c.length > 2).map(c => c.map(p => T(m, p))) });
+          const i53 = g.findIndex(([c]) => c === 53), i45 = g.findIndex(([c]) => c === 45), i46 = g.findIndex(([c]) => c === 46);
+          const angulo = i53 >= 0 ? +g[i53][1] + Math.atan2(m.b, m.a) * 180 / Math.PI : null;
+          const sep = i45 >= 0 && i46 >= 0 ? Math.hypot(+g[i45][1], +g[i46][1]) * Math.hypot(m.a, m.b) : null;
+          if (caminos.length) rellenos.push({ ...base, solido, angulo, sep, caminos: caminos.filter(c => c.length > 2).map(c => c.map(p => T(m, p))) });
           continue;
         } else if (e.tipo === 'ATTRIB' && (num(e.g, 70) & 1)) continue;
         else if (e.tipo === 'TEXT' || e.tipo === 'MTEXT' || e.tipo === 'ATTRIB') {
@@ -2559,6 +2562,8 @@ const Ficha = (() => {
         const e = { tipo: v.trim(), ini: i, fin: k, g, capa: (val(8) || '0').toUpperCase(), papel: val(67) === '1' };
         r.ents.push(e);
         if (e.tipo === 'INSERT' && !e.papel && /PARCELA_SURGENTE/i.test(val(2) || '')) r.nparc = [+val(10), +val(20)];
+        if ((e.tipo === 'TEXT' || e.tipo === 'MTEXT' || e.tipo === 'INSERT') && !e.papel && /PUERTA/i.test(e.capa)) (r.puertas ||= []).push([+val(10), +val(20)]);
+        if ((e.tipo === 'TEXT' || e.tipo === 'MTEXT') && !e.papel && /CALLE/i.test(e.capa)) (r.calles ||= []).push([+val(10), +val(20)]);
       }
     }
     // ATTRIB / VERTEX / SEQEND acompañan a la entidad anterior
@@ -2589,6 +2594,13 @@ const Ficha = (() => {
 
     // frente: lados que están sobre la línea de la manzana
     let frente = d.manzana ? par.map((p, i) => distAnillo(mul(add(p, par[(i + 1) % n]), .5), d.manzana) < 2) : par.map(() => false);
+    const ref = (r.puertas && r.puertas.length) ? r.puertas : r.calles;
+    if (!frente.some(Boolean) && ref && ref.length) {
+      // sin datos de la manzana: el frente es el lado más cercano al número de puerta (o al nombre de la calle)
+      let best = 0, dm = Infinity;
+      par.forEach((p, i) => { for (const c of ref) { const dd = distSeg(c, p, par[(i + 1) % n]); if (dd < dm) { dm = dd; best = i; } } });
+      frente = par.map((_, i) => i === best);
+    }
     if (!frente.some(Boolean)) frente = par.map((_, i) => i === 0);
     // A = primer vértice de la cadena de frente (en sentido horario)
     let iA = frente.findIndex((f, i) => f && !frente[(i - 1 + n) % n]);
@@ -2608,11 +2620,78 @@ const Ficha = (() => {
     // círculo de la parcela (alrededor del número)
     const cNp = T(r.nparc || centroPar), rNp = 0.0068;
     circulo(CAPA_CAR, 3, cNp, rNp);
-    // rayado ANSI31 con el hueco del círculo
-    ent('HATCH', CAPA_CAR, 1, [['100', 'AcDbHatch'], ['10', 0], ['20', 0], ['30', 0], ['210', 0], ['220', 0], ['230', 1], ['2', 'ANSI31'], ['70', 0], ['71', 0], ['91', 2],
-      ['92', 7], ['72', 0], ['73', 1], ['93', P.length], ...P.flatMap(p => [['10', p[0]], ['20', p[1]]]), ['97', 0],
-      ['92', 22], ['72', 1], ['73', 1], ['93', 2], ['10', cNp[0] + rNp], ['20', cNp[1]], ['42', -1], ['10', cNp[0] - rNp], ['20', cNp[1]], ['42', -1], ['97', 0],
-      ['75', 1], ['76', 1], ['52', 45], ['41', 0.001], ['77', 0], ['78', 1], ['53', 90], ['43', 0], ['44', 0], ['45', -0.003175], ['46', 0], ['79', 0], ['47', 0.0002], ['98', 1], ['10', (P[0][0] + P[2 % n][0]) / 2], ['20', (P[0][1] + P[2 % n][1]) / 2]]);
+    // superficies de planta baja y proyecciones de la planta superior (RT 19.4.4)
+    const eLO = uni(sub(par[(iA + 1) % n], par[iA])); // dirección de la L.O.
+    const angLO = Math.atan2(eLO[1], eLO[0]) * 180 / Math.PI;
+    const supOut = { cubierta: 0, semicubierta: 0, descubierta: 0, precaria: 0 };
+    const sups = (d.superficies || []).map(sp => ({ ...sp, anillo: limpiarAnillo(sp.anillo), verts: (sp.verts || sp.anillo).map(v => [v[0], v[1], v[2] || 0]) })).filter(sp => sp.anillo.length >= 3);
+    const acotados = [];
+    const vtx = vs => vs.flatMap(v => { const p = T(v); return v[2] ? [['10', p[0]], ['20', p[1]], ['42', v[2]]] : [['10', p[0]], ['20', p[1]]]; });
+    const vtxH = vs => vs.flatMap(v => { const p = T(v); return [['10', p[0]], ['20', p[1]], ['42', v[2] || 0]]; });
+    const rayado = (vs, angulo, sep, huecos) => {
+      const conB = vs.some(v => v[2]);
+      const caminos = [['92', 3], ['72', conB ? 1 : 0], ['73', 1], ['93', vs.length], ...(conB ? vtxH(vs) : vtx(vs)), ['97', 0]];
+      let nb = 1;
+      for (const h of huecos) {
+        if (h.circulo) { caminos.push(['92', 2], ['72', 1], ['73', 1], ['93', 2], ['10', h.c[0] + h.r], ['20', h.c[1]], ['42', -1], ['10', h.c[0] - h.r], ['20', h.c[1]], ['42', -1], ['97', 0]); }
+        else { const hb = h.verts.some(v => v[2]); caminos.push(['92', 2], ['72', hb ? 1 : 0], ['73', 1], ['93', h.verts.length], ...(hb ? vtxH(h.verts) : vtx(h.verts)), ['97', 0]); }
+        nb++;
+      }
+      const a = ((angulo % 180) + 180) % 180, ar = a * Math.PI / 180;
+      ent('HATCH', CAPA_CAR, 256, [['100', 'AcDbHatch'], ['10', 0], ['20', 0], ['30', 0], ['210', 0], ['220', 0], ['230', 1], ['2', '_USER'], ['70', 0], ['71', 0], ['91', nb],
+        ...caminos, ['75', 0], ['76', 0], ['52', a], ['41', 1], ['77', 0], ['78', 1], ['53', a], ['43', 0], ['44', 0], ['45', -sep * Math.sin(ar)], ['46', sep * Math.cos(ar)], ['79', 0], ['47', 0.0002], ['98', 0]]);
+    };
+    // segmentos de una recta (p + t·u) que quedan dentro de un anillo
+    const dentroDe = (p, u, an) => {
+      const ts = [];
+      for (let k = 0; k < an.length; k++) {
+        const a = an[k], b = an[(k + 1) % an.length], e = sub(b, a), den = u[0] * e[1] - u[1] * e[0];
+        if (Math.abs(den) < 1e-12) continue;
+        const w = sub(a, p), t = (w[0] * e[1] - w[1] * e[0]) / den, q = (w[0] * u[1] - w[1] * u[0]) / den;
+        if (q >= 0 && q < 1) ts.push(t);
+      }
+      ts.sort((x, y) => x - y);
+      const out = []; for (let k = 0; k + 1 < ts.length; k += 2) out.push([add(p, mul(u, ts[k])), add(p, mul(u, ts[k + 1]))]);
+      return out;
+    };
+    const nparcM = r.nparc || centroPar, rNpM = 0.0068 * N;
+    for (const sp of sups) {
+      const tipo = sp.tipo;
+      if (!tipo) continue;
+      supOut[tipo]++;
+      const an = sp.anillo, vs = sp.verts;
+      ent('LWPOLYLINE', CAPA_CAR, 256, [['100', 'AcDbPolyline'], ['90', vs.length], ['70', 1], ['43', 0], ...vtx(vs)]);
+      // huecos: superficies que están dentro y el círculo del número de parcela
+      const ctr = q => mul(q.reduce((a, p) => add(a, p), [0, 0]), 1 / q.length);
+      const huecos = sups.filter(o => o !== sp && Math.abs(area2(o.anillo)) < Math.abs(area2(an)) && dentro(ctr(o.anillo), an)).map(o => ({ verts: o.verts }));
+      if (dentro(nparcM, an)) huecos.push({ circulo: true, c: T(nparcM), r: 0.0068 });
+      if (tipo === 'cubierta') rayado(vs, angLO + 45, 0.0012, huecos);
+      else if (tipo === 'precaria') rayado(vs, angLO + 90, 0.0012, huecos);
+      else if (tipo === 'semicubierta') {
+        // doble línea cruzada: las diagonales del rectángulo alineado con la L.O. que contiene al polígono
+        const nLO = [-eLO[1], eLO[0]];
+        const pu = an.map(p => p[0] * eLO[0] + p[1] * eLO[1]), pv = an.map(p => p[0] * nLO[0] + p[1] * nLO[1]);
+        const u0 = Math.min(...pu), u1 = Math.max(...pu), v0 = Math.min(...pv), v1 = Math.max(...pv);
+        const P_ = (uu, vv) => add(mul(eLO, uu), mul(nLO, vv));
+        for (const [a, b] of [[P_(u0, v0), P_(u1, v1)], [P_(u0, v1), P_(u1, v0)]]) {
+          const u = uni(sub(b, a));
+          for (const [x, y] of dentroDe(a, u, an)) linea(CAPA_CAR, 256, T(x), T(y));
+        }
+      }
+      // medidas de los lados de la superficie (por dentro), salvo las que coinciden con un lado de la parcela
+      const sg = Math.sign(area2(vs)) || 1;
+      const igual = (a, b, p, q) => (len(sub(p, a)) < 0.05 && len(sub(q, b)) < 0.05) || (len(sub(p, b)) < 0.05 && len(sub(q, a)) < 0.05);
+      for (let k = 0; k < vs.length; k++) {
+        if (vs[k][2]) continue; // tramos curvos: no se acotan como recta
+        const a = vs[k], b = vs[(k + 1) % vs.length], l = len(sub(b, a));
+        if (l < 0.5) continue;
+        if (par.some((p, m) => igual(a, b, p, par[(m + 1) % n]))) continue;
+        if (acotados.some(([p, q]) => igual(a, b, p, q))) continue; // lado compartido con otra superficie
+        acotados.push([a, b]);
+        const e = uni(sub(b, a)), adentro = mul([-e[1], e[0]], sg);
+        texto(CAPA_MED, 7, add(mul(add(T(a), T(b)), .5), mul(adentro, 0.0016)), 0.0014, l.toFixed(2), angLegible(e));
+      }
+    }
     // letras y medidas de los lados
     const lados = [];
     orden.forEach((i, k) => {
@@ -2744,10 +2823,33 @@ const Ficha = (() => {
     out.splice(r.finEnt, 0, ...lineas);
     cambios.sort((a, b) => b[0] - a[0]).forEach(([i, f, nuevas]) => out.splice(i, f - i, ...nuevas));
     if (r.seedLinea != null) out[r.seedLinea] = h.toString(16).toUpperCase();
-    return { txt: out.join(r.eol), info: { escala: N, lados, vecinos: vecinosOut, distancias: dirFrente, borrados: borrar.length } };
+    return { txt: out.join(r.eol), info: { escala: N, lados, vecinos: vecinosOut, distancias: dirFrente, superficies: supOut, borrados: borrar.length } };
   }
 
-  return { generar, leer, ESCALAS };
+  // Nº de expediente en la ficha: reemplaza el texto EX-… del layout o lo agrega arriba a la izquierda
+  function expediente(txt, valor) {
+    const r = leer(txt), L = r.L.slice();
+    const ex = r.ents.find(e => e.papel && (e.tipo === 'TEXT' || e.tipo === 'MTEXT') && /^\s*EX-/i.test((e.g.find(([c]) => c === 1) || [, ''])[1]));
+    if (ex) {
+      const out = [];
+      for (let k = ex.ini; k < ex.fin; k += 2) out.push(L[k], parseInt(L[k], 10) === 1 ? valor : L[k + 1]);
+      L.splice(ex.ini, ex.fin - ex.ini, ...out);
+      return L.join(r.eol);
+    }
+    const vp = r.ents.find(e => e.papel && e.tipo === 'VIEWPORT' && e.g.some(([c, v]) => c === 69 && +v !== 1));
+    if (!vp || !r.psOwner) throw new Error('el DXF no tiene layout con ventana');
+    const gv = c => +(vp.g.find(([x]) => x === c) || [, 0])[1];
+    const x = gv(10) - gv(40) / 2 + 0.03, y = gv(20) + gv(41) / 2 - 0.013;
+    let h = Math.max(r.seed, r.maxH + 1);
+    const g = [['0', 'TEXT'], ['5', (h++).toString(16).toUpperCase()], ['330', r.psOwner], ['100', 'AcDbEntity'], ['67', '     1'], ['8', CAPA_CAR], ['62', '     5'], ['100', 'AcDbText'], ['10', x], ['20', y], ['30', 0], ['40', 0.002], ['1', valor], ['7', r.estilos.find(s => /^ARIAL$/i.test(s)) || 'Standard'], ['100', 'AcDbText']];
+    const lineas = []; for (const [c, v] of g) lineas.push(String(c).padStart(3, ' '), String(v));
+    L.splice(r.finEnt, 0, ...lineas);
+    if (r.seedLinea != null) L[r.seedLinea] = h.toString(16).toUpperCase();
+    return L.join(r.eol);
+  }
+  const expedienteActual = txt => { const r = leer(txt); const ex = r.ents.find(e => e.papel && (e.tipo === 'TEXT' || e.tipo === 'MTEXT') && /^\s*EX-/i.test((e.g.find(([c]) => c === 1) || [, ''])[1])); return ex ? (ex.g.find(([c]) => c === 1) || [, ''])[1].trim() : ''; };
+
+  return { generar, leer, expediente, expedienteActual, ESCALAS };
 })();
 if (typeof module !== 'undefined') module.exports = Ficha;
 </script>
@@ -3412,7 +3514,12 @@ function edPapel(X, Y, path, v){
     const x0 = q.cx - q.w / 2, y1 = q.cy + q.h / 2;
     out += `<clipPath id="edVp${i}"><rect x="${X(x0)}" y="${Y(y1)}" width="${(q.w * v.s).toFixed(1)}" height="${(q.h * v.s).toFixed(1)}"/></clipPath><g clip-path="url(#edVp${i})">${g}</g>`;
   });
-  for (const rl of P.rellenos) out += `<path d="${ptsH(rl.caminos)}" fill="${colorAci(rl.color)}" fill-opacity="${rl.solido ? 1 : .25}" fill-rule="evenodd" stroke="none"/>`;
+  P.rellenos.forEach((rl, i) => {
+    if (!rl.solido && rl.angulo != null && rl.sep && rl.sep * v.s >= 2) {
+      const w = (rl.sep * v.s).toFixed(2);
+      out += `<pattern id="edRl${i}" patternUnits="userSpaceOnUse" width="${w}" height="${w}" patternTransform="rotate(${(-rl.angulo).toFixed(2)})"><line x1="0" y1="0" x2="${w}" y2="0" stroke="${colorAci(rl.color)}" stroke-width=".7"/></pattern><path d="${ptsH(rl.caminos)}" fill="url(#edRl${i})" fill-rule="evenodd" stroke="none"/>`;
+    } else out += `<path d="${ptsH(rl.caminos)}" fill="${colorAci(rl.color)}" fill-opacity="${rl.solido ? 1 : .25}" fill-rule="evenodd" stroke="none"/>`;
+  });
   for (const t of P.trazos) out += `<path d="${path(t.pts)}" fill="none" stroke="${colorAci(t.color)}" stroke-width=".9"/>`;
   for (const t of P.textos) {
     const fs = t.alto * v.s; if (fs < 2) continue;
@@ -3666,6 +3773,11 @@ function edLateral(){
   if ($('bDxfAlta')) $('bDxfAlta').onclick = descargarDxfEditor;
   if ($('bDxf')) $('bDxf').onclick = descargarDxfEditor;
   if ($('edFicha')) $('edFicha').onclick = edFicha;
+  if ($('edExp')) $('edExp').onchange = e => {
+    const v = e.target.value.trim(); if (!v) return;
+    try { const t = Ficha.expediente(ed.txt, v); ed.undo.push({ txt: ed.txt, decl: new Map(ed.decl) }); edCargar(t); ed.expediente = v; edDibujar(); $('edFichaSt').textContent = 'Nº de expediente actualizado en la ficha.'; }
+    catch(er){ $('edFichaSt').textContent = 'No se pudo escribir el expediente: ' + (er.message || er); }
+  };
 }
 async function descargarDxfEditor(){
   const ed = state.ed;
@@ -3685,12 +3797,31 @@ function edCardFicha(){
   const online = ENTORNO === 'web' || ENTORNO === 'demo';
   const smp = state.c3d?.res?.smp;
   return `<div class="ed-card"><div class="ed-k">Ficha parcelaria automática</div>
-    <div class="ed-s">Consulta en Ciudad 3D la manzana y las parcelas linderas y arma en el layout: contorno con rayado, letras y medidas de los lados, números de las parcelas linderas, prolongación de los linderos, línea de edificación con la distancia a cada esquina, y la escala de la ventana.</div>
+    <div class="ed-s">Consulta en Ciudad 3D la manzana y las parcelas linderas y arma en el layout: contorno de la parcela, superficies de planta baja según el RT 19.4.4 (cubiertas con rayado a 45° de la L.O., semicubiertas con doble línea cruzada, descubiertas sin rayado, precarias con rayado a 90°, todas acotadas), letras y medidas de los lados, números de las parcelas linderas, prolongación de los linderos, línea de edificación con la distancia a cada esquina, y la escala de la ventana.</div>
     <button type="button" class="tb" id="edFicha" ${online && smp ? '' : 'disabled'}>${I ? 'Volver a armar la ficha' : 'Armar ficha con Ciudad 3D'}</button>
     <div class="ed-s" id="edFichaSt">${!online ? 'Disponible en la versión publicada de la página (necesita consultar Ciudad 3D).' : !smp ? 'Primero la parcela tiene que encontrarse en Ciudad 3D (paso 2).' : I ? '' : 'Si el layout ya tiene una ficha dibujada, se reemplazan el contorno, las medidas y los linderos; el norte, el número de expediente y el recuadro quedan como están.'}</div>
-    ${I ? `<div class="ed-s"><b>Escala:</b> 1:${I.escala}<br><b>Lados:</b> ${I.lados.join(' · ')}<br><b>Linderas:</b> ${I.vecinos.length ? I.vecinos.join(' · ') : 'no se encontraron'}<br><b>Distancia a las esquinas (L.E.):</b> ${I.distancias.length ? I.distancias.join(' m · ') + ' m' : '—'}</div>
+    <label class="ed-f">Nº de expediente (arriba a la izquierda)<input id="edExp" value="${esc(ed.expediente ?? Ficha.expedienteActual(ed.txt))}" placeholder="EX-2026-12345678- -GCABA-DGROC" autocomplete="off"></label>
+    ${I ? `<div class="ed-s"><b>Escala:</b> 1:${I.escala}<br><b>Superficies en planta baja:</b> ${[['cubierta','cubiertas (rayado a 45°)'],['semicubierta','semicubiertas (doble línea cruzada)'],['descubierta','descubiertas'],['precaria','precarias (rayado a 90°)']].filter(([k]) => I.superficies?.[k]).map(([k, t]) => I.superficies[k] + ' ' + t).join(' · ') || 'ninguna'}${ed.fichaFuera?.length ? `<br><b>Fuera de la parcela (no se dibujan):</b> ${ed.fichaFuera.map(p => f(p.area) + ' m² de ' + Engine.NOMBRE_PLANTA(p.planta)).join(' · ')}. Si es un balcón o cuerpo sobre la vereda, corresponde representarlo como invasión a la vía pública (RT 19.4.4.2 e).` : ''}<br><b>Lados:</b> ${I.lados.join(' · ')}<br><b>Linderas:</b> ${I.vecinos.length ? I.vecinos.join(' · ') : 'no se encontraron'}<br><b>Distancia a las esquinas (L.E.):</b> ${I.distancias.length ? I.distancias.join(' m · ') + ' m' : '—'}</div>
       <div class="ed-s">Revisá la ficha en el visor antes de descargar. Con <b>Deshacer</b> (en la pestaña Plano) volvés a la ficha anterior.</div>` : ''}
   </div>`;
+}
+// Superficies que se dibujan en la ficha (RT 19.4.4): las de planta baja y las de la planta inmediata superior
+// que se proyectan fuera de lo construido en planta baja, dentro de la parcela
+const TIPO_FICHA = c => [1, 30, 104].includes(c) ? 'cubierta' : [2, 4].includes(c) ? 'semicubierta' : [3, 5, 204].includes(c) ? 'descubierta' : c === 52 ? 'precaria' : null;
+function edSuperficiesFicha(par){
+  const ed = state.ed, ctr = q => [q.reduce((a, p) => a + p[0], 0) / q.length, q.reduce((a, p) => a + p[1], 0) / q.length];
+  const pb = ed.sup.filter(p => p.planta === 'PB' && TIPO_FICHA(p.color));
+  const construidoPB = pb.filter(p => TIPO_FICHA(p.color) !== 'descubierta');
+  const sup = ed.plantas.filter(x => /^\d{2}P$/.test(x)).sort()[0];
+  const proy = [], fuera = [];
+  if (sup) for (const p of ed.sup.filter(q => q.planta === sup && TIPO_FICHA(q.color))) {
+    const c = ctr(p.dib);
+    if (construidoPB.some(q => Bloques.dentro(c, q.dib))) continue;
+    if (!Bloques.dentro(c, par.map(v => [v[0], v[1]]))) { fuera.push(p); continue; }
+    proy.push(p);
+  }
+  ed.fichaFuera = fuera;
+  return pb.concat(proy).map(p => ({ tipo: TIPO_FICHA(p.color), anillo: p.dib, verts: p.pts }));
 }
 async function edFicha(){
   const ed = state.ed, st = () => $('edFichaSt');
@@ -3701,7 +3832,7 @@ async function edFicha(){
     $('edFicha').disabled = true; st().textContent = 'Consultando Ciudad 3D (manzana y parcelas linderas)…';
     const F = await Ciudad3D.ficha(smp);
     const cv = r => r.map(p => Geo.c3dACaba(p));
-    const res = Ficha.generar(ed.txt, { parcela: par, estudio: F.estudio ? cv(F.estudio) : null, vecinos: F.vecinos.map(v => ({ num: v.num, anillo: cv(v.anillo) })), manzana: F.manzana ? cv(F.manzana) : null });
+    const res = Ficha.generar(ed.txt, { parcela: par, superficies: edSuperficiesFicha(par), estudio: F.estudio ? cv(F.estudio) : null, vecinos: F.vecinos.map(v => ({ num: v.num, anillo: cv(v.anillo) })), manzana: F.manzana ? cv(F.manzana) : null });
     ed.undo.push({ txt: ed.txt, decl: new Map(ed.decl) });
     edCargar(res.txt);
     ed.fichaInfo = res.info; ed.views.papel = null;
