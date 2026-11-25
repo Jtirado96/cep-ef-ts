@@ -2,8 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Informe de excedente fiscal y tolerancia superficial para CEP en CABA: compara el DXF de relevamiento con el título, el certificado de AGIP y Ciudad 3D.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Excedente y Tolerancia CEP</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -1124,10 +1123,6 @@ body{background-color:var(--bg); background-image:linear-gradient(var(--grid) 1p
   </ol>
   <div class="side-foot">Art. 23 Ley 6.437 · Título 5 Reglamento Técnico · Detalle Layers Bloques v4</div>
 </nav>
-
-<style>html,body{margin:0}</style>
-</head>
-<body>
 <div class="wrap">
   <header class="hero">
     <div class="hero-top">
@@ -1914,7 +1909,29 @@ const Ciudad3D = (() => {
     return { estado, parcela, manzana, texto: { ok: 'Verificada', warn: 'Verificar', bad: 'Error' }[estado] };
   }
 
-  return { consultar, comparar, evaluar, poligonos, configurar, UMBRAL, TOL, BASE };
+  // Ficha parcelaria: manzana, parcela en estudio y parcelas cercanas de la misma manzana (anillos [lon, lat])
+  async function ficha(smp) {
+    const log = [];
+    const m = /^(\d{3})-(\d{3}[A-Z]?)-/i.exec(smp);
+    if (!m) throw new Error('nomenclatura no válida: ' + smp);
+    const [sec, mza] = [m[1], m[2]];
+    const anillo = d => { const p = poligonos(d); return p.length ? p.sort((a, b) => b[0].length - a[0].length)[0][0] : null; };
+    const lst = await pedir(`/catastro/smp/${sec}/${mza}/`, log);
+    const datos = (lst.ok && lst.data && lst.data.datos) || [];
+    if (!datos.length) throw new Error('Ciudad 3D no devolvió las parcelas de la manzana ' + sec + '-' + mza);
+    const xy = d => { const q = /POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)/i.exec(d.centroide || ''); return q ? [+q[1], +q[2]] : null; };
+    const yo = datos.find(d => d.smp.toUpperCase() === smp.toUpperCase());
+    const c0 = yo && xy(yo);
+    // parcelas a menos de 90 m del centroide de la parcela en estudio (como máximo 16)
+    const cerca = datos.filter(d => d !== yo).map(d => ({ d, dist: c0 && xy(d) ? Math.hypot(xy(d)[0] - c0[0], xy(d)[1] - c0[1]) : 0 }))
+      .filter(x => !c0 || x.dist < 90).sort((a, b) => a.dist - b.dist).slice(0, 16).map(x => x.d.smp);
+    const geo = async s => { const r = await pedir(`/catastro/geometria/?smp=${encodeURIComponent(s)}`, log); return r.ok ? anillo(r.data) : null; };
+    const [estudio, mzaR, ...vec] = await Promise.all([geo(smp), pedir(`/catastro/geometria/?sm=${sec}-${mza}`, log).then(r => r.ok ? anillo(r.data) : null), ...cerca.map(geo)]);
+    if (!estudio) throw new Error('Ciudad 3D no devolvió la geometría de la parcela ' + smp);
+    return { estudio, manzana: mzaR, vecinos: cerca.map((s, i) => ({ smp: s, num: s.split('-')[2], anillo: vec[i] })).filter(v => v.anillo), log };
+  }
+
+  return { consultar, comparar, evaluar, poligonos, configurar, ficha, UMBRAL, TOL, BASE };
 })();
 if (typeof module !== 'undefined') module.exports = Ciudad3D;
 </script>
@@ -2478,6 +2495,262 @@ const Editor = (() => {
 })();
 if (typeof module !== 'undefined') module.exports = Editor;
 </script>
+<script>/* ===== Ficha parcelaria: arma el layout (espacio papel) del DXF a partir de la parcela y sus linderos ===== */
+const Ficha = (() => {
+  const ESCALAS = [100, 125, 150, 200, 250, 300, 400, 500, 600, 750, 1000, 1250, 1500, 2000, 2500, 3000, 4000, 5000];
+  const CAPA_CAR = '01-P-PLANO-CARATULA', CAPA_MED = '03-P-MEDIDAS-PARCELA';
+  const OCUPA = 0.6; // fracción de la ventana que ocupa la parcela
+
+  // ---------- geometría ----------
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1]], add = (a, b) => [a[0] + b[0], a[1] + b[1]], mul = (a, k) => [a[0] * k, a[1] * k];
+  const len = a => Math.hypot(a[0], a[1]), uni = a => { const l = len(a) || 1; return [a[0] / l, a[1] / l]; };
+  const area2 = r => { let s = 0; for (let i = 0; i < r.length; i++) { const p = r[i], q = r[(i + 1) % r.length]; s += p[0] * q[1] - q[0] * p[1]; } return s / 2; };
+  function limpiarAnillo(r) {
+    let out = r.map(p => [p[0], p[1]]);
+    if (out.length > 1 && len(sub(out[0], out[out.length - 1])) < 1e-6) out.pop();
+    return out;
+  }
+  function distSeg(p, a, b) {
+    const d = sub(b, a), l2 = d[0] * d[0] + d[1] * d[1];
+    let t = l2 ? ((p[0] - a[0]) * d[0] + (p[1] - a[1]) * d[1]) / l2 : 0; t = Math.max(0, Math.min(1, t));
+    return len(sub(p, add(a, mul(d, t))));
+  }
+  const distAnillo = (p, r) => { let m = Infinity; for (let i = 0; i < r.length; i++) m = Math.min(m, distSeg(p, r[i], r[(i + 1) % r.length])); return m; };
+  function dentro(p, r) {
+    let c = false;
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const [xi, yi] = r[i], [xj, yj] = r[j];
+      if ((yi > p[1]) !== (yj > p[1]) && p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  }
+  // intersección del rayo p + t·u (t > 0) con un anillo: menor t
+  function rayo(p, u, r) {
+    let best = Infinity;
+    for (let i = 0; i < r.length; i++) {
+      const a = r[i], b = r[(i + 1) % r.length], e = sub(b, a);
+      const den = u[0] * e[1] - u[1] * e[0]; if (Math.abs(den) < 1e-12) continue;
+      const w = sub(a, p), t = (w[0] * e[1] - w[1] * e[0]) / den, s = (w[0] * u[1] - w[1] * u[0]) / den;
+      if (t > 1e-6 && s >= -1e-9 && s <= 1 + 1e-9) best = Math.min(best, t);
+    }
+    return best;
+  }
+  // ángulo de texto legible (entre −90° y 90°)
+  const angLegible = u => { let a = Math.atan2(u[1], u[0]) * 180 / Math.PI; if (a > 90.0001) a -= 180; if (a <= -90) a += 180; return a; };
+
+  // ---------- lectura del DXF ----------
+  function leer(txt) {
+    const L = txt.split(/\r?\n/);
+    const r = { L, eol: txt.includes('\r\n') ? '\r\n' : '\n', ents: [], psOwner: null, seedLinea: null, seed: 0, maxH: 0, finEnt: null, estilos: [], nparc: null };
+    let sec = null;
+    for (let i = 0; i + 1 < L.length; i += 2) {
+      const c = parseInt(L[i], 10), v = L[i + 1];
+      if (c === 0 && v === 'SECTION') { sec = (L[i + 3] || '').trim(); continue; }
+      if (c === 0 && v === 'ENDSEC') { if (sec === 'ENTITIES') r.finEnt = i; sec = null; continue; }
+      if ((c === 5 || c === 105) && sec !== 'HEADER') r.maxH = Math.max(r.maxH, parseInt(v, 16) || 0);
+      if (sec === 'HEADER' && c === 9 && v.trim() === '$HANDSEED') { r.seedLinea = i + 3; r.seed = parseInt(L[i + 3], 16) || 0; }
+      if (c !== 0) continue;
+      const g = []; let k = i + 2;
+      for (; k + 1 < L.length && parseInt(L[k], 10) !== 0; k += 2) g.push([parseInt(L[k], 10), L[k + 1]]);
+      const val = cc => { const p = g.find(([x]) => x === cc); return p ? p[1].trim() : null; };
+      if (sec === 'TABLES' && v === 'BLOCK_RECORD' && /^\*paper_space$/i.test(val(2) || '')) r.psOwner = val(5);
+      if (sec === 'TABLES' && v === 'STYLE' && val(2)) r.estilos.push(val(2));
+      if (sec === 'ENTITIES') {
+        const e = { tipo: v.trim(), ini: i, fin: k, g, capa: (val(8) || '0').toUpperCase(), papel: val(67) === '1' };
+        r.ents.push(e);
+        if (e.tipo === 'INSERT' && !e.papel && /PARCELA_SURGENTE/i.test(val(2) || '')) r.nparc = [+val(10), +val(20)];
+      }
+    }
+    // ATTRIB / VERTEX / SEQEND acompañan a la entidad anterior
+    return r;
+  }
+
+  // ---------- armado ----------
+  // d: { parcela: anillo DXF (CABA), estudio: anillo Ciudad 3D (CABA), vecinos: [{ num, anillo }], manzana: anillo (CABA) }
+  function generar(txt, d) {
+    const r = leer(txt);
+    if (!r.psOwner) throw new Error('el DXF no tiene espacio papel (layout)');
+    const vp = r.ents.find(e => e.papel && e.tipo === 'VIEWPORT' && e.g.some(([c, v]) => c === 69 && +v !== 1));
+    if (!vp) throw new Error('el layout no tiene una ventana gráfica (viewport) hacia el dibujo');
+    const gv = c => +(vp.g.find(([x]) => x === c) || [, 0])[1];
+    const pc = [gv(10), gv(20)], pw = gv(40), ph = gv(41);
+    let par = limpiarAnillo(d.parcela);
+    if (area2(par) > 0) par.reverse(); // sentido horario, como en la ficha
+    // escala: la parcela ocupa a lo sumo el 60 % de la ventana
+    const xs = par.map(p => p[0]), ys = par.map(p => p[1]);
+    const bb = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+    const N = ESCALAS.find(n => (bb[2] - bb[0]) / n <= pw * OCUPA && (bb[3] - bb[1]) / n <= ph * OCUPA) || ESCALAS[ESCALAS.length - 1];
+    const vc = [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2];
+    const T = p => [pc[0] + (p[0] - vc[0]) / N, pc[1] + (p[1] - vc[1]) / N];
+    const P = par.map(T);
+    const n = par.length;
+    const centroPar = mul(par.reduce((a, p) => add(a, p), [0, 0]), 1 / n);
+    const afuera = (i) => { const e = uni(sub(par[(i + 1) % n], par[i])); return [-e[1], e[0]]; }; // normal exterior (anillo horario)
+
+    // frente: lados que están sobre la línea de la manzana
+    let frente = d.manzana ? par.map((p, i) => distAnillo(mul(add(p, par[(i + 1) % n]), .5), d.manzana) < 2) : par.map(() => false);
+    if (!frente.some(Boolean)) frente = par.map((_, i) => i === 0);
+    // A = primer vértice de la cadena de frente (en sentido horario)
+    let iA = frente.findIndex((f, i) => f && !frente[(i - 1 + n) % n]);
+    if (iA < 0) iA = 0;
+    const orden = Array.from({ length: n }, (_, k) => (iA + k) % n);
+    const letra = k => String.fromCharCode(65 + k);
+
+    const estilo = r.estilos.find(s => /^TEXTO$/i.test(s)) || r.estilos.find(s => /^ARIAL$/i.test(s)) || 'Standard';
+    const nv = []; // entidades nuevas (grupos)
+    const ent = (tipo, capa, color, cuerpo) => nv.push({ tipo, capa, color, cuerpo });
+    const texto = (capa, color, p, alto, s, rot = 0) => ent('TEXT', capa, color, [['100', 'AcDbText'], ['10', p[0]], ['20', p[1]], ['30', 0], ['40', alto], ['1', s], ['50', rot], ['7', estilo], ['72', 1], ['11', p[0]], ['21', p[1]], ['31', 0], ['100', 'AcDbText'], ['73', 2]]);
+    const linea = (capa, color, a, b) => ent('LINE', capa, color, [['100', 'AcDbLine'], ['10', a[0]], ['20', a[1]], ['30', 0], ['11', b[0]], ['21', b[1]], ['31', 0]]);
+    const circulo = (capa, color, c, rr) => ent('CIRCLE', capa, color, [['100', 'AcDbCircle'], ['10', c[0]], ['20', c[1]], ['30', 0], ['40', rr]]);
+
+    // contorno
+    ent('LWPOLYLINE', CAPA_CAR, 1, [['100', 'AcDbPolyline'], ['90', P.length], ['70', 1], ['43', 0], ...P.flatMap(p => [['10', p[0]], ['20', p[1]]])]);
+    // círculo de la parcela (alrededor del número)
+    const cNp = T(r.nparc || centroPar), rNp = 0.0068;
+    circulo(CAPA_CAR, 3, cNp, rNp);
+    // rayado ANSI31 con el hueco del círculo
+    ent('HATCH', CAPA_CAR, 1, [['100', 'AcDbHatch'], ['10', 0], ['20', 0], ['30', 0], ['210', 0], ['220', 0], ['230', 1], ['2', 'ANSI31'], ['70', 0], ['71', 0], ['91', 2],
+      ['92', 7], ['72', 0], ['73', 1], ['93', P.length], ...P.flatMap(p => [['10', p[0]], ['20', p[1]]]), ['97', 0],
+      ['92', 22], ['72', 1], ['73', 1], ['93', 2], ['10', cNp[0] + rNp], ['20', cNp[1]], ['42', -1], ['10', cNp[0] - rNp], ['20', cNp[1]], ['42', -1], ['97', 0],
+      ['75', 1], ['76', 1], ['52', 45], ['41', 0.001], ['77', 0], ['78', 1], ['53', 90], ['43', 0], ['44', 0], ['45', -0.003175], ['46', 0], ['79', 0], ['47', 0.0002], ['98', 1], ['10', (P[0][0] + P[2 % n][0]) / 2], ['20', (P[0][1] + P[2 % n][1]) / 2]]);
+    // letras y medidas de los lados
+    const lados = [];
+    orden.forEach((i, k) => {
+      const j = (i + 1) % n, kk = (k + 1) % n;
+      // letra: hacia afuera, en la bisectriz
+      const bis = uni(add(afuera((i - 1 + n) % n), afuera(i)));
+      texto(CAPA_MED, 3, add(P[i], mul(bis, 0.0035)), 0.003, letra(k), 0);
+      const u = sub(par[j], par[i]), l = len(u);
+      const nom = letra(k) + letra(kk) + '=' + l.toFixed(2);
+      lados.push(nom);
+      texto(CAPA_MED, 7, add(mul(add(P[i], P[j]), .5), mul(afuera(i), 0.0035)), 0.003, nom, angLegible(u));
+    });
+
+    // linderos (Ciudad 3D)
+    const vecinosOut = [];
+    const est = d.estudio ? limpiarAnillo(d.estudio) : null;
+    if (est && d.vecinos) {
+      for (const v of d.vecinos) {
+        const an = limpiarAnillo(v.anillo);
+        // tramo compartido con la parcela en estudio (muestreo del borde cada 0,25 m)
+        const comun = [];
+        for (let i = 0; i < est.length; i++) {
+          const a = est[i], b = est[(i + 1) % est.length], l = len(sub(b, a)), m = Math.max(1, Math.ceil(l / 0.25));
+          for (let s = 0; s < m; s++) { const p = add(a, mul(sub(b, a), s / m)); if (distAnillo(p, an) < 0.15) comun.push(p); }
+        }
+        if (comun.length * 0.25 < 1) continue; // sólo esquina o nada en común
+        const medio = comun[Math.floor(comun.length / 2)];
+        // lado de la parcela DXF más cercano, para la dirección hacia afuera
+        let iL = 0, dm = Infinity;
+        for (let i = 0; i < n; i++) { const dd = distSeg(medio, par[i], par[(i + 1) % n]); if (dd < dm) { dm = dd; iL = i; } }
+        const no = afuera(iL);
+        let c = null;
+        for (const dd of [0.017, 0.014, 0.011, 0.009, 0.007]) { const q = add(medio, mul(no, dd * N)); if (dentro(q, an)) { c = q; break; } }
+        if (!c) c = add(medio, mul(no, 0.009 * N));
+        const cp = T(c);
+        circulo(CAPA_CAR, 1, cp, 0.0048);
+        texto(CAPA_CAR, 7, cp, 0.0029, v.num, 0);
+        vecinosOut.push(v.num);
+      }
+    }
+    // marcas de los linderos que llegan a cada vértice, y línea de edificación con la distancia a la esquina
+    const largo = 0.017;
+    const marcas = [];
+    const dirFrente = [];
+    orden.forEach(i => {
+      const V = par[i], dirs = [];
+      if (est && d.vecinos) {
+        // vértice equivalente en Ciudad 3D
+        let Ve = null, dm = 1.5;
+        for (const p of est) { const dd = len(sub(p, V)); if (dd < dm) { dm = dd; Ve = p; } }
+        if (Ve) for (const v of d.vecinos) {
+          const an = limpiarAnillo(v.anillo), m = an.length;
+          an.forEach((p, k) => {
+            if (len(sub(p, Ve)) > 0.3) return;
+            for (const paso of [1, -1]) {
+              let q = null;
+              for (let s = 1; s < m; s++) { const w = an[(k + paso * s + m * s) % m]; if (len(sub(w, p)) > 0.8) { q = w; break; } }
+              if (!q) continue;
+              const u = uni(sub(q, p));
+              if (distAnillo(add(Ve, mul(u, 1)), est) < 0.15) continue; // corre por el borde de la parcela
+              dirs.push(u);
+            }
+          });
+        }
+      }
+      // en los extremos del frente, siempre la prolongación de la línea de frente
+      const k = orden.indexOf(i), ant = orden[(k - 1 + n) % n];
+      if (frente[i] && !frente[ant]) dirs.push(uni(sub(par[i], par[(i + 1) % n])));
+      if (!frente[i] && frente[ant]) dirs.push(uni(sub(par[i], par[ant])));
+      const unicas = [];
+      for (const u of dirs) if (!unicas.some(w => w[0] * u[0] + w[1] * u[1] > Math.cos(4 * Math.PI / 180))) unicas.push(u);
+      for (const u of unicas) {
+        const a = T(V), b = add(a, mul(u, largo));
+        linea(CAPA_CAR, 256, a, b);
+        // ¿es la prolongación del frente? → L.E. y distancia a la esquina
+        const fr = (frente[i] || frente[ant]) && orden.filter(j => frente[j]).some(j => { const e = uni(sub(par[(j + 1) % n], par[j])); return Math.abs(e[0] * u[0] + e[1] * u[1]) > Math.cos(5 * Math.PI / 180); });
+        if (fr) {
+          const rot = angLegible(u), nrm = [-u[1], u[0]];
+          const haciaCalle = d.manzana ? (dentro(add(V, mul(nrm, 1)), d.manzana) ? mul(nrm, -1) : nrm) : nrm;
+          texto(CAPA_CAR, 256, add(b, mul(u, 0.003)), 0.0015, 'L.E.', rot);
+          if (d.manzana) {
+            // distancia a la esquina: vértice de la manzana sobre la prolongación del frente
+            const cand = limpiarAnillo(d.manzana).map(W => { const w = sub(W, V); return { t: w[0] * u[0] + w[1] * u[1], e: Math.abs(w[0] * u[1] - w[1] * u[0]) }; }).filter(c => c.t > 0.5 && c.e < 3);
+            const t = cand.length ? Math.min(...cand.map(c => c.t)) : rayo(V, u, d.manzana);
+            if (isFinite(t) && t > 0.5) { texto(CAPA_CAR, 256, add(mul(add(a, b), .5), mul(haciaCalle, 0.0018)), 0.0015, t.toFixed(2), rot); dirFrente.push(t.toFixed(2)); }
+          }
+        }
+        marcas.push(1);
+      }
+    });
+
+    const esc = r.ents.find(e => e.papel && e.tipo === 'TEXT' && /ESCALA\s*1\s*:/i.test((e.g.find(([c]) => c === 1) || [, ''])[1]));
+    if (!esc) texto(CAPA_CAR, 7, [pc[0] - pw / 2 + 0.012, pc[1] - ph / 2 + 0.004], 0.003, 'ESCALA 1:' + N);
+
+    // ---------- escritura ----------
+    const L = r.L.slice();
+    const fmt = v => typeof v === 'number' ? String(Math.round(v * 1e10) / 1e10) : v;
+    let h = Math.max(r.seed, r.maxH + 1);
+    const lineas = [];
+    for (const e of nv) {
+      const g = [['0', e.tipo], ['5', (h++).toString(16).toUpperCase()], ['330', r.psOwner], ['100', 'AcDbEntity'], ['67', '     1'], ['8', e.capa]];
+      if (e.color !== 256) g.push(['62', String(e.color).padStart(6, ' ')]);
+      g.push(...e.cuerpo);
+      for (const [c, v] of g) lineas.push(String(c).padStart(3, ' '), fmt(v));
+    }
+    // borrar lo generado antes (si se vuelve a generar) y actualizar ventana y escala
+    const borrar = r.ents.filter(e => e.papel && (
+      (e.capa === CAPA_MED && /^(TEXT|MTEXT|DIMENSION|LINE|LWPOLYLINE)$/.test(e.tipo)) ||
+      (e.capa === CAPA_CAR && /^(LWPOLYLINE|HATCH|CIRCLE|LINE)$/.test(e.tipo)) ||
+      (e.capa === CAPA_CAR && e.tipo === 'TEXT' && /^(\d{3}[A-Z]?|L\.E\.|\d+[.,]\d+)$/i.test((e.g.find(([c]) => c === 1) || [, ''])[1].trim()))));
+    const cambios = []; // [ini, fin, nuevas líneas]
+    borrar.forEach(e => cambios.push([e.ini, e.fin, []]));
+    // ventana: centro y altura de vista
+    {
+      const out = [];
+      for (let k = vp.ini; k < vp.fin; k += 2) {
+        const c = parseInt(L[k], 10);
+        if (c === 12) out.push(L[k], fmt(vc[0])); else if (c === 22) out.push(L[k], fmt(vc[1])); else if (c === 45) out.push(L[k], fmt(ph * N)); else out.push(L[k], L[k + 1]);
+      }
+      cambios.push([vp.ini, vp.fin, out]);
+    }
+    // texto de escala
+    if (esc) {
+      const out = [];
+      for (let k = esc.ini; k < esc.fin; k += 2) out.push(L[k], parseInt(L[k], 10) === 1 ? L[k + 1].replace(/1\s*:\s*[\d.]+/, '1:' + N) : L[k + 1]);
+      cambios.push([esc.ini, esc.fin, out]);
+    }
+    let out = L;
+    out.splice(r.finEnt, 0, ...lineas);
+    cambios.sort((a, b) => b[0] - a[0]).forEach(([i, f, nuevas]) => out.splice(i, f - i, ...nuevas));
+    if (r.seedLinea != null) out[r.seedLinea] = h.toString(16).toUpperCase();
+    return { txt: out.join(r.eol), info: { escala: N, lados, vecinos: vecinosOut, distancias: dirFrente, borrados: borrar.length } };
+  }
+
+  return { generar, leer, ESCALAS };
+})();
+if (typeof module !== 'undefined') module.exports = Ficha;
+</script>
 <script>
 const SAMPLE_DXF = {"parcela":[{"layer":"09-M-PARCELA","color":5,"area":141.8883193731308,"arco":false,"cerrado":true,"dib":[[18167.442,69831.199],[18161.893,69846.579],[18153.665,69844.042],[18159.285,69828.412]]}],"titulo":[{"layer":"14-M-TITULO","color":2,"area":142.53187775611877,"arco":false,"cerrado":true,"dib":[[18153.617,69844.028],[18159.22,69828.444],[18167.438,69831.145],[18161.893,69846.579]]}],"excedente":[],"excedenteN":0,"sup":[{"layer":"M-M-PB-SUP","color":1,"area":111.66646207856597,"arco":true,"cerrado":true,"dib":[[18160.107,69829.553],[18159.014,69829.165],[18153.665,69844.042],[18161.893,69846.579],[18165.839,69835.64],[18160.309,69833.644],[18161.011,69831.697],[18161.06,69831.582],[18161.099,69831.464],[18161.129,69831.342],[18161.149,69831.219],[18161.159,69831.095],[18161.159,69830.97],[18161.149,69830.845],[18161.129,69830.722],[18161.099,69830.6],[18161.06,69830.482],[18161.012,69830.367],[18160.954,69830.256],[18160.888,69830.15],[18160.813,69830.05],[18160.731,69829.956],[18160.642,69829.869],[18160.546,69829.789],[18160.443,69829.717],[18160.336,69829.654],[18160.223,69829.599]],"planta":"PB"},{"layer":"M-M-01P-SUP","color":3,"area":12.880000114440918,"arco":false,"cerrado":true,"dib":[[18162.378,69834.391],[18165.839,69835.64],[18164.652,69838.932],[18161.19,69837.683]],"planta":"01P"},{"layer":"M-M-01P-SUP","color":1,"area":88.96193671226501,"arco":false,"cerrado":true,"dib":[[18161.893,69846.579],[18164.652,69838.932],[18161.19,69837.683],[18162.378,69834.391],[18157.737,69832.717],[18153.665,69844.042]],"planta":"01P"},{"layer":"M-M-01P-SUP","color":3,"area":9.824525490277185,"arco":true,"cerrado":true,"dib":[[18160.107,69829.553],[18159.014,69829.165],[18157.737,69832.717],[18160.309,69833.644],[18161.011,69831.697],[18161.06,69831.582],[18161.099,69831.464],[18161.129,69831.342],[18161.149,69831.219],[18161.159,69831.095],[18161.159,69830.97],[18161.149,69830.845],[18161.129,69830.722],[18161.099,69830.6],[18161.06,69830.482],[18161.012,69830.367],[18160.954,69830.256],[18160.888,69830.15],[18160.813,69830.05],[18160.731,69829.956],[18160.642,69829.869],[18160.546,69829.789],[18160.443,69829.717],[18160.336,69829.654],[18160.223,69829.599]],"planta":"01P"},{"layer":"M-M-PB-SUP","color":3,"area":30.221857413765974,"arco":true,"cerrado":true,"dib":[[18160.107,69829.553],[18160.223,69829.599],[18160.336,69829.654],[18160.443,69829.717],[18160.546,69829.789],[18160.642,69829.869],[18160.731,69829.956],[18160.813,69830.05],[18160.888,69830.15],[18160.954,69830.256],[18161.012,69830.367],[18161.06,69830.482],[18161.099,69830.6],[18161.129,69830.722],[18161.149,69830.845],[18161.159,69830.97],[18161.159,69831.095],[18161.149,69831.219],[18161.129,69831.342],[18161.099,69831.464],[18161.06,69831.582],[18161.011,69831.697],[18160.309,69833.644],[18165.839,69835.64],[18167.442,69831.199],[18159.285,69828.412],[18159.014,69829.165]],"planta":"PB"},{"layer":"M-M-02P-SUP","color":3,"area":71.34067499637604,"arco":false,"cerrado":true,"dib":[[18161.591,69836.573],[18161.19,69837.683],[18164.652,69838.932],[18161.893,69846.579],[18153.665,69844.042],[18154.775,69840.954],[18156.46,69841.559],[18156.984,69840.101],[18155.3,69839.495],[18156.552,69836.013],[18159.262,69836.988],[18159.662,69835.878]],"planta":"02P"},{"layer":"M-M-02P-SUP","color":1,"area":2.774500012397766,"arco":false,"cerrado":true,"dib":[[18154.775,69840.954],[18156.46,69841.559],[18156.984,69840.101],[18155.3,69839.495]],"planta":"02P"}],"murosN":10,"avisos":[],"numPuerta":["N° 3922"],"calles":["CHIVILCOY","BOGOTA","MERCEDES","BACACAY","BOGOTA"],"manzana":[{"layer":"07-M-MANZANA","color":7,"area":11096.656919002533,"arco":false,"cerrado":true,"dib":[[18070.718,69818.471],[18171.258,69849.466],[18209.172,69751.006],[18108.483,69719.761],[18070.718,69818.471]]}],"layouts":["077-092-001b"],"nparc":["001b"]};
 const SAMPLE_CERT = {calle:"BOGOTA",nro:"3922",partida:"1742",seccion:"77",manzana:"092",parcela:"001B",fecha:"11/09/2026",terreno:143,
@@ -2752,6 +3025,7 @@ function vistaBloques(){
   }
   if (E.estado === 'alta' && state.cert){ vistaEditor(box, E); return; }
   if (E.estado !== 'ok' && E.estado !== 'baja'){ box.innerHTML = '<p class="nota">Cargá el certificado de AGIP para completar los bloques.</p>'; return; }
+  if (B && B.items.length && !B.faltan.length){ vistaEditor(box, E); return; }
   if (box.querySelector('#edSvg')) box.innerHTML = '';
   if (!B || !B.items.length){ box.innerHTML = '<p class="nota">No hay polígonos de superficie cubierta, semicubierta o descubierta en las capas M-M-##-SUP.</p>'; return; }
   if (B.faltan.length){
@@ -2824,10 +3098,17 @@ const edView = () => state.ed.views[state.ed.vista];
 function vistaEditor(box, E){
   if (!state.ed || state.ed.base !== state.dxfTxt){ edIniciar(); state.ed.base = state.dxfTxt; }
   const ed = state.ed;
-  ed.alta = E.m2; ed.agip = E.agip; ed.constr = E.tot.constr;
+  ed.alta = E.m2; ed.agip = E.agip; ed.constr = E.tot.constr; ed.estado = E.estado;
+  const modo = E.estado === 'alta' ? 'alta' : 'simple';
+  if (box.dataset.modo !== modo) { box.innerHTML = ''; box.dataset.modo = modo; }
+  ed.modo = modo;
+  if (modo === 'simple') { ed.decl.clear(); ed.herr = 'sel'; }
   if (!box.querySelector('#edSvg')){
+    const intro = modo === 'alta'
+      ? `Lo relevado supera a lo empadronado: corresponde declarar un <b>alta de ${f(E.m2)} m²</b>. Si el sector nuevo está dentro de un polígono más grande, usá <b>Dividir polígono</b> para separarlo; después seleccioná cada polígono nuevo y marcalo como <b>superficie a declarar</b>. Al descargar, esos polígonos llevan el bloque <b>form</b> y el resto <b>form_empadronado</b> o <b>form_descubierto</b>.`
+      : `${E.estado === 'baja' ? `Corresponde informar una <b>baja de ${f(E.m2)} m²</b> ante AGIP; la baja solo se informa y no se dibuja, así que toda la superficie relevada lleva bloque de superficie empadronada.` : 'La superficie relevada está dentro de la tolerancia, así que toda la superficie construida es superficie empadronada.'} Al descargar se agrega <b>form_empadronado</b> en los polígonos cubiertos y semicubiertos y <b>form_descubierto</b> en los descubiertos, en el centro de cada polígono. En la pestaña <b>Ficha parcelaria</b> podés armar la ficha con los linderos de Ciudad 3D.`;
     box.innerHTML = `
-      <p>Lo relevado supera a lo empadronado: corresponde declarar un <b>alta de ${f(E.m2)} m²</b>. Si el sector nuevo está dentro de un polígono más grande, usá <b>Dividir polígono</b> para separarlo; después seleccioná cada polígono nuevo y marcalo como <b>superficie a declarar</b>. Al descargar, esos polígonos llevan el bloque <b>form</b> y el resto <b>form_empadronado</b> o <b>form_descubierto</b>.</p>
+      <p>${intro}</p>
       <div class="ed" id="edWrap">
         <div class="ed-bar">
           <div class="ed-grp">
@@ -2882,9 +3163,10 @@ function edVista(v, inicial){
   document.querySelectorAll('#edWrap .ed-pages .pg').forEach(b => b.setAttribute('aria-selected', b.dataset.v === v));
   const modelo = v === 'modelo';
   $('edTabs').hidden = !modelo; $('edBar2').hidden = !modelo;
-  $('edSel').hidden = $('edDiv').hidden = $('edUndo').hidden = !modelo;
+  $('edSel').hidden = $('edUndo').hidden = !modelo;
+  $('edDiv').hidden = !modelo || ed.modo !== 'alta';
   if (!modelo) { ed.herr = 'sel'; edCancelar(); ed.calcar = null; }
-  edTabs(); edCapas(); edObra(); edHint(); edDibujar();
+  edTabs(); edCapas(); edObra(); edHint(); edDibujar(); if (!inicial) edLateral();
 }
 function edTabs(){
   const ed = state.ed;
@@ -2906,7 +3188,7 @@ function edHint(t){
   const ed = state.ed;
   if (t) { $('edHint').textContent = t; return; }
   if (ed.vista === 'papel') { $('edHint').textContent = 'Ficha parcelaria tal como está en el layout del DXF (solo lectura). Rueda: zoom · arrastrar: desplazar.'; return; }
-  if (ed.calcar) { $('edHint').textContent = ['1/4 · Hacé clic en un punto reconocible del plano de obra (por ejemplo, una esquina de la parcela).', '2/4 · Ahora hacé clic en ese mismo punto en el dibujo (se engancha a los vértices).', '3/4 · Hacé clic en un segundo punto del plano de obra, lo más lejos posible del primero.', '4/4 · Hacé clic en ese mismo punto en el dibujo.'][ed.calcar.paso]; return; }
+  if (ed.calcar) { $('edHint').textContent = ['1/6 · Hacé clic en un punto reconocible del plano de obra (por ejemplo, una esquina de la parcela).', '2/6 · Ahora hacé clic en ese mismo punto en el dibujo (se engancha a los vértices).', '3/6 · Hacé clic en un segundo punto del plano de obra, lejos del primero.', '4/6 · Hacé clic en ese mismo punto en el dibujo.', '5/6 · Hacé clic en un tercer punto del plano de obra, que no esté alineado con los otros dos.', '6/6 · Hacé clic en ese mismo punto en el dibujo.'][ed.calcar.paso]; return; }
   $('edHint').textContent = ed.herr === 'div'
     ? (ed.A ? 'Marcá puntos intermedios o terminá el corte sobre el borde del mismo polígono. Esc cancela.' : 'Hacé clic sobre el borde del polígono donde empieza el corte. Se engancha a vértices, puntos medios, prolongaciones e intersecciones.')
     : 'Hacé clic en un polígono para ver sus datos y marcarlo. Rueda: zoom · arrastrar: desplazar.';
@@ -2924,7 +3206,7 @@ function edObra(){
     <label class="ed-sw"><input type="checkbox" id="edObraVis" ${o.vis ? 'checked' : ''}> Ver</label>
     <label class="ed-sw">Opacidad <input type="range" id="edObraOp" min="0.1" max="1" step="0.05" value="${o.op}"></label>
     ${o.npag > 1 ? `<label class="ed-sw">Hoja <select id="edObraPag">${Array.from({length:o.npag}, (_, i) => `<option value="${i + 1}" ${o.pag === i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></label>` : ''}
-    <button type="button" class="tb" id="edCalcar" aria-pressed="${!!ed.calcar}">Calcar con 2 puntos</button>
+    <button type="button" class="tb" id="edCalcar" aria-pressed="${!!ed.calcar}">Calcar con 3 puntos</button>
     <button type="button" class="tb" id="edObraX">Quitar</button>`;
   $('edObraVis').onchange = e => { o.vis = e.target.checked; edDibujar(); };
   $('edObraOp').oninput = e => { o.op = +e.target.value; edDibujar(); };
@@ -2947,7 +3229,7 @@ async function edObraCargar(file){
       ed.obra = { url, w: img.naturalWidth, h: img.naturalHeight, op: .5, vis: true, npag: 1, pag: 1 };
       edObraUbicar();
     }
-    edObra(); edHint('Plano de obra cargado. Usá «Calcar con 2 puntos» para superponerlo exactamente sobre el dibujo.'); edDibujar();
+    edObra(); edHint('Plano de obra cargado. Usá «Calcar con 3 puntos» para superponerlo exactamente sobre el dibujo.'); edDibujar();
     evento('editor-obra', 'Editor: plano de obra cargado');
   } catch(e){ edHint('No se pudo cargar el plano de obra: ' + (e.message || e)); console.error(e); }
 }
@@ -2978,18 +3260,23 @@ function edCalcarClic(w){
   const ed = state.ed, c = ed.calcar;
   c.pts.push(c.paso % 2 ? (ed.snap && ed.snap.tipo ? ed.snap.p : w) : w);
   c.paso++;
-  if (c.paso === 4) {
-    const [p1, t1, p2, t2] = c.pts;
-    const dp = [p2[0] - p1[0], p2[1] - p1[1]], dt = [t2[0] - t1[0], t2[1] - t1[1]];
-    const den = dp[0] * dp[0] + dp[1] * dp[1];
-    if (den < 1e-9) { ed.calcar = { paso: 0, pts: [] }; edHint('Los dos puntos del plano de obra son el mismo. Empezá de nuevo.'); return; }
-    // semejanza z' = α z + β (rotación, escala y traslación)
-    const ar = (dt[0] * dp[0] + dt[1] * dp[1]) / den, ai = (dt[1] * dp[0] - dt[0] * dp[1]) / den;
-    const bx = t1[0] - (ar * p1[0] - ai * p1[1]), by = t1[1] - (ai * p1[0] + ar * p1[1]);
+  if (c.paso === 6) {
+    const [p1, t1, p2, t2, p3, t3] = c.pts;
+    // transformación afín por 3 puntos: corrige escala distinta en cada eje, giro y desplazamiento
+    const det = (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p3[0] - p1[0]) * (p2[1] - p1[1]);
+    if (Math.abs(det) < 1e-9) { ed.calcar = { paso: 0, pts: [] }; edHint('Los tres puntos del plano de obra están alineados o repetidos. Empezá de nuevo con puntos que formen un triángulo.'); edDibujar(); return; }
+    const resolver = k => { // t_k = a·x + b·y + c
+      const [x1, y1] = p1, [x2, y2] = p2, [x3, y3] = p3, v1 = t1[k], v2 = t2[k], v3 = t3[k];
+      const a = ((v2 - v1) * (y3 - y1) - (v3 - v1) * (y2 - y1)) / det;
+      const b = ((x2 - x1) * (v3 - v1) - (x3 - x1) * (v2 - v1)) / det;
+      return [a, b, v1 - a * x1 - b * y1];
+    };
+    const [ax, bx, cx] = resolver(0), [ay, by, cy] = resolver(1);
     const M = ed.obra.M;
-    ed.obra.M = { a: ar * M.a - ai * M.b, b: ai * M.a + ar * M.b, c: ar * M.c - ai * M.d, d: ai * M.c + ar * M.d, e: ar * M.e - ai * M.f + bx, f: ai * M.e + ar * M.f + by };
+    ed.obra.M = { a: ax * M.a + bx * M.b, b: ay * M.a + by * M.b, c: ax * M.c + bx * M.d, d: ay * M.c + by * M.d, e: ax * M.e + bx * M.f + cx, f: ay * M.e + by * M.f + cy };
     ed.calcar = null; edObra();
-    edHint(`Plano de obra calcado (escala ×${Math.hypot(ar, ai).toFixed(3)}). Si no coincide bien, repetí con puntos más alejados.`);
+    const ex = Math.hypot(ax, ay), ey = Math.hypot(bx, by);
+    edHint(`Plano de obra calcado con 3 puntos (escala ×${ex.toFixed(3)} en un sentido y ×${ey.toFixed(3)} en el otro).`);
   } else edHint();
   edDibujar();
 }
@@ -3312,44 +3599,62 @@ function edMarcar(hs){
 /* --- panel lateral --- */
 function edLateral(){
   const ed = state.ed, side = $('edSide'); if (!side) return;
+  const alta = ed.modo === 'alta';
   const p = ed.sup.find(s => s.h === ed.sel);
   let html = '';
-  if (p) {
-    const dec = ed.decl.get(p.h);
-    html += `<div class="ed-card"><div class="ed-k">Polígono seleccionado</div>
-      <div class="ed-v">${f(p.area)} m²</div>
-      <div class="ed-s">${esc(Engine.COLORES[p.color]?.nombre || 'Color ' + p.color)} · ${Engine.NOMBRE_PLANTA(p.planta)}</div>`;
-    if (esConstr(p)) {
-      html += `<label class="ed-chk"><input type="checkbox" id="edDec" ${dec ? 'checked' : ''}> Superficie a declarar (alta)</label>`;
-      if (dec) html += `
-        <label class="ed-f">Tipo de formulario (TIPO_FORM)<select id="edTipo"><option value="">Elegí el destino…</option>${TIPOS_FORM.map(([v, t]) => `<option value="${v}" ${dec.tipo === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
-        <label class="ed-f">Nº de formulario (Nº_FORM)<input id="edNform" inputmode="numeric" value="${esc(dec.nform)}"></label>`;
-    } else html += `<p class="ed-s">Solo la superficie construida (cubierta, semicubierta y otras computables) se puede declarar.</p>`;
-    html += `</div>`;
-  } else html += `<div class="ed-card ed-s">Seleccioná un polígono en el plano.</div>`;
-  // resumen
-  const decl = [...ed.decl.entries()].map(([h, d]) => ({ p: ed.sup.find(s => s.h === h), d })).filter(x => x.p);
-  const sum = decl.reduce((a, x) => a + x.p.area, 0);
-  const nuevoAgip = ed.agip + sum, dif = ed.constr - nuevoAgip, pct = nuevoAgip ? dif * 100 / nuevoAgip : 0, ts = Engine.tsTitulo5(nuevoAgip);
-  const cierra = decl.length && Math.abs(pct) <= ts;
-  const faltaTipo = decl.some(x => !x.d.tipo || !String(x.d.nform).trim());
-  html += `<div class="ed-card"><div class="ed-k">Superficie a declarar</div>
-    <div class="ed-v">${f(sum)} <span class="ed-s">de ${f(ed.alta)} m²</span></div>
-    <div class="ed-s">AGIP + declarado: ${f(nuevoAgip)} m² · relevado ${f(ed.constr)} m² · diferencia ${f(pct)} % (TS ${ts} %)</div>
-    <div class="pill ${cierra ? 'ok' : 'warn'}">${!decl.length ? 'Todavía no marcaste polígonos' : cierra ? 'Cierra dentro de la tolerancia' : 'No cierra: revisá los polígonos marcados'}</div>
-    ${decl.length ? `<ol class="ed-list">${decl.map((x, i) => `<li><button type="button" data-h="${x.p.h}">Polígono ${i + 1}</button> · ${f(x.p.area)} m² · ${Engine.NOMBRE_PLANTA(x.p.planta)} · form ${esc(x.d.tipo || '¿?')}/${esc(x.d.nform || '¿?')}</li>`).join('')}</ol>` : ''}
-  </div>`;
-  // sugerencias
-  const S = edSugerencias();
-  const uc = (state.cert?.unidades || []).map(u => `${f(u.sup)} m²${u.antig ? ' (' + esc(u.antig) + ')' : ''}${u.destino ? ' · ' + esc(u.destino.toLowerCase()) : ''}`);
-  html += `<div class="ed-card"><div class="ed-k">Sugerencias según el certificado</div>
-    ${uc.length ? `<div class="ed-s"><b>Empadronado en AGIP:</b> ${uc.join(' · ')} = ${f(ed.agip)} m².</div>` : ''}
-    <div class="ed-s">Para que cierre, lo declarado tiene que sumar <b>entre ${f(S.dMin)} y ${f(S.dMax)} m²</b> (TS ${S.ts} %).</div>
-    ${S.combos.length ? `<div class="ed-s">Polígonos que ya cumplen:</div><ul class="ed-sug">${S.combos.map((c, i) => `<li><span>${c.sel.map(q => `${f(q.area)} m² (${Engine.NOMBRE_PLANTA(q.planta)})`).join(' + ')}${c.sel.length > 1 ? ' = ' + f(c.sum) + ' m²' : ''}</span><button type="button" class="tb" data-i="${i}">Marcar</button></li>`).join('')}</ul>`
-      : `<div class="ed-s">Ningún polígono ni combinación de polígonos llega a ese rango: el sector nuevo está dentro de uno más grande.${S.contener.length ? ` Probablemente en ${S.contener.map(q => `<button type="button" class="lnk" data-h="${q.h}">${f(q.area)} m² (${Engine.NOMBRE_PLANTA(q.planta)})</button>`).join(' o ')}: dividilo con <b>Dividir polígono</b> comparando con el plano de obra.` : ''}</div>`}
-  </div>
-  <div class="ed-card"><button class="btn" id="bDxfAlta" type="button" ${!decl.length || faltaTipo ? 'disabled' : ''}>Descargar DXF completado</button>
-    <div class="ed-s" id="dxfStatus">${!decl.length ? 'Marcá al menos un polígono a declarar.' : faltaTipo ? 'Completá el tipo y el número de formulario de cada polígono.' : 'Formato AutoCAD 2010 DXF. El resto del archivo queda igual.'}</div></div>`;
+  if (ed.vista === 'papel') html += edCardFicha();
+  else {
+    if (p) {
+      const dec = ed.decl.get(p.h);
+      html += `<div class="ed-card"><div class="ed-k">Polígono seleccionado</div>
+        <div class="ed-v">${f(p.area)} m²</div>
+        <div class="ed-s">${esc(Engine.COLORES[p.color]?.nombre || 'Color ' + p.color)} · ${Engine.NOMBRE_PLANTA(p.planta)}</div>`;
+      if (alta && esConstr(p)) {
+        html += `<label class="ed-chk"><input type="checkbox" id="edDec" ${dec ? 'checked' : ''}> Superficie a declarar (alta)</label>`;
+        if (dec) html += `
+          <label class="ed-f">Tipo de formulario (TIPO_FORM)<select id="edTipo"><option value="">Elegí el destino…</option>${TIPOS_FORM.map(([v, t]) => `<option value="${v}" ${dec.tipo === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+          <label class="ed-f">Nº de formulario (Nº_FORM)<input id="edNform" inputmode="numeric" value="${esc(dec.nform)}"></label>`;
+      } else if (alta) html += `<p class="ed-s">Solo la superficie construida (cubierta, semicubierta y otras computables) se puede declarar.</p>`;
+      else html += `<p class="ed-s">Lleva el bloque <b>${Bloques.EMPADRONADO.has(p.color) ? 'form_empadronado' : Bloques.DESCUBIERTO.has(p.color) ? 'form_descubierto' : 'ninguno (no se computa)'}</b>.</p>`;
+      html += `</div>`;
+    } else html += `<div class="ed-card ed-s">Seleccioná un polígono en el plano.</div>`;
+  }
+  let descarga;
+  if (alta) {
+    const decl = [...ed.decl.entries()].map(([h, d]) => ({ p: ed.sup.find(s => s.h === h), d })).filter(x => x.p);
+    const sum = decl.reduce((a, x) => a + x.p.area, 0);
+    const nuevoAgip = ed.agip + sum, dif = ed.constr - nuevoAgip, pct = nuevoAgip ? dif * 100 / nuevoAgip : 0, ts = Engine.tsTitulo5(nuevoAgip);
+    const cierra = decl.length && Math.abs(pct) <= ts;
+    const faltaTipo = decl.some(x => !x.d.tipo || !String(x.d.nform).trim());
+    if (ed.vista !== 'papel') {
+      html += `<div class="ed-card"><div class="ed-k">Superficie a declarar</div>
+        <div class="ed-v">${f(sum)} <span class="ed-s">de ${f(ed.alta)} m²</span></div>
+        <div class="ed-s">AGIP + declarado: ${f(nuevoAgip)} m² · relevado ${f(ed.constr)} m² · diferencia ${f(pct)} % (TS ${ts} %)</div>
+        <div class="pill ${cierra ? 'ok' : 'warn'}">${!decl.length ? 'Todavía no marcaste polígonos' : cierra ? 'Cierra dentro de la tolerancia' : 'No cierra: revisá los polígonos marcados'}</div>
+        ${decl.length ? `<ol class="ed-list">${decl.map((x, i) => `<li><button type="button" data-h="${x.p.h}">Polígono ${i + 1}</button> · ${f(x.p.area)} m² · ${Engine.NOMBRE_PLANTA(x.p.planta)} · form ${esc(x.d.tipo || '¿?')}/${esc(x.d.nform || '¿?')}</li>`).join('')}</ol>` : ''}
+      </div>`;
+      const S = edSugerencias();
+      ed._S = S;
+      const uc = (state.cert?.unidades || []).map(u => `${f(u.sup)} m²${u.antig ? ' (' + esc(u.antig) + ')' : ''}${u.destino ? ' · ' + esc(u.destino.toLowerCase()) : ''}`);
+      html += `<div class="ed-card"><div class="ed-k">Sugerencias según el certificado</div>
+        ${uc.length ? `<div class="ed-s"><b>Empadronado en AGIP:</b> ${uc.join(' · ')} = ${f(ed.agip)} m².</div>` : ''}
+        <div class="ed-s">Para que cierre, lo declarado tiene que sumar <b>entre ${f(S.dMin)} y ${f(S.dMax)} m²</b> (TS ${S.ts} %).</div>
+        ${S.combos.length ? `<div class="ed-s">Polígonos que ya cumplen:</div><ul class="ed-sug">${S.combos.map((c, i) => `<li><span>${c.sel.map(q => `${f(q.area)} m² (${Engine.NOMBRE_PLANTA(q.planta)})`).join(' + ')}${c.sel.length > 1 ? ' = ' + f(c.sum) + ' m²' : ''}</span><button type="button" class="tb" data-i="${i}">Marcar</button></li>`).join('')}</ul>`
+          : `<div class="ed-s">Ningún polígono ni combinación de polígonos llega a ese rango: el sector nuevo está dentro de uno más grande.${S.contener.length ? ` Probablemente en ${S.contener.map(q => `<button type="button" class="lnk" data-h="${q.h}">${f(q.area)} m² (${Engine.NOMBRE_PLANTA(q.planta)})</button>`).join(' o ')}: dividilo con <b>Dividir polígono</b> comparando con el plano de obra.` : ''}</div>`}
+      </div>`;
+    }
+    descarga = `<div class="ed-card"><button class="btn" id="bDxfAlta" type="button" ${!decl.length || faltaTipo ? 'disabled' : ''}>Descargar DXF completado</button>
+      <div class="ed-s" id="dxfStatus">${!decl.length ? 'Marcá al menos un polígono a declarar.' : faltaTipo ? 'Completá el tipo y el número de formulario de cada polígono.' : 'Formato AutoCAD 2010 DXF. El resto del archivo queda igual.'}</div></div>`;
+  } else {
+    const B = Bloques.proponer(ed.txt, ed.sup);
+    const nuevos = B.items.filter(it => !it.existente);
+    const emp = nuevos.filter(it => it.tipo === 'empadronado').length, des = nuevos.length - emp;
+    if (ed.vista !== 'papel') html += `<div class="ed-card"><div class="ed-k">Bloques de superficie</div>
+      <div class="ed-s">${nuevos.length ? `Se agregan <b>${emp}</b> form_empadronado y <b>${des}</b> form_descubierto.` : 'Todos los polígonos ya tienen su bloque.'}${B.items.length - nuevos.length ? ` ${B.items.length - nuevos.length} polígono(s) ya tenían bloque.` : ''}</div></div>`;
+    descarga = `<div class="ed-card"><button class="btn" id="bDxf" type="button">Descargar DXF completado</button>
+      <div class="ed-s" id="dxfStatus">Formato AutoCAD 2010 DXF. El resto del archivo queda igual.</div></div>`;
+  }
+  html += descarga;
   side.innerHTML = html;
   const chk = $('edDec');
   if (chk) chk.onchange = () => { if (chk.checked) ed.decl.set(p.h, { tipo: ed.tipoDef, nform: ed.nformDef }); else ed.decl.delete(p.h); edDibujar(); edLateral(); };
@@ -3357,19 +3662,52 @@ function edLateral(){
   if ($('edNform')) $('edNform').onchange = e => { ed.decl.get(p.h).nform = ed.nformDef = e.target.value.trim(); edLateral(); };
   const ir = h => { const q = ed.sup.find(s => s.h === h); if (!q) return; if (ed.vista !== 'modelo') edVista('modelo'); ed.planta = q.planta; ed.sel = q.h; edTabs(); edDibujar(); edLateral(); };
   side.querySelectorAll('.ed-list button, .ed-card .lnk').forEach(b => b.onclick = () => ir(b.dataset.h));
-  side.querySelectorAll('.ed-sug button').forEach(b => b.onclick = () => edMarcar(S.combos[+b.dataset.i].sel.map(q => q.h)));
-  if ($('bDxfAlta')) $('bDxfAlta').onclick = descargarDxfAlta;
+  side.querySelectorAll('.ed-sug button').forEach(b => b.onclick = () => edMarcar(ed._S.combos[+b.dataset.i].sel.map(q => q.h)));
+  if ($('bDxfAlta')) $('bDxfAlta').onclick = descargarDxfEditor;
+  if ($('bDxf')) $('bDxf').onclick = descargarDxfEditor;
+  if ($('edFicha')) $('edFicha').onclick = edFicha;
 }
-async function descargarDxfAlta(){
+async function descargarDxfEditor(){
   const ed = state.ed;
   try {
-    const B = Bloques.proponer(ed.txt, ed.sup, ed.decl);
+    const B = Bloques.proponer(ed.txt, ed.sup, ed.modo === 'alta' ? ed.decl : new Map());
     if (B.faltan.length) throw new Error('el DXF no tiene la definición del bloque ' + B.faltan.join(', '));
     const txt = Bloques.escribir(ed.txt, B.items.filter(it => !it.existente));
     const nombre = state.dxfName.replace(/\.dxf$/i, '') + '_bloques.dxf';
     await guardar(nombre, new Blob([aBytes(txt)], {type: 'application/dxf'}), 'dxfStatus');
-    evento('dxf-alta', 'DXF completado con alta');
+    evento(ed.modo === 'alta' ? 'dxf-alta' : 'dxf-bloques', ed.modo === 'alta' ? 'DXF completado con alta' : 'DXF completado con bloques');
   } catch(e){ $('dxfStatus').textContent = 'No se pudo generar el DXF: ' + (e.message || e); console.error(e); }
+}
+
+/* --- ficha parcelaria automática --- */
+function edCardFicha(){
+  const ed = state.ed, I = ed.fichaInfo;
+  const online = ENTORNO === 'web' || ENTORNO === 'demo';
+  const smp = state.c3d?.res?.smp;
+  return `<div class="ed-card"><div class="ed-k">Ficha parcelaria automática</div>
+    <div class="ed-s">Consulta en Ciudad 3D la manzana y las parcelas linderas y arma en el layout: contorno con rayado, letras y medidas de los lados, números de las parcelas linderas, prolongación de los linderos, línea de edificación con la distancia a cada esquina, y la escala de la ventana.</div>
+    <button type="button" class="tb" id="edFicha" ${online && smp ? '' : 'disabled'}>${I ? 'Volver a armar la ficha' : 'Armar ficha con Ciudad 3D'}</button>
+    <div class="ed-s" id="edFichaSt">${!online ? 'Disponible en la versión publicada de la página (necesita consultar Ciudad 3D).' : !smp ? 'Primero la parcela tiene que encontrarse en Ciudad 3D (paso 2).' : I ? '' : 'Si el layout ya tiene una ficha dibujada, se reemplazan el contorno, las medidas y los linderos; el norte, el número de expediente y el recuadro quedan como están.'}</div>
+    ${I ? `<div class="ed-s"><b>Escala:</b> 1:${I.escala}<br><b>Lados:</b> ${I.lados.join(' · ')}<br><b>Linderas:</b> ${I.vecinos.length ? I.vecinos.join(' · ') : 'no se encontraron'}<br><b>Distancia a las esquinas (L.E.):</b> ${I.distancias.length ? I.distancias.join(' m · ') + ' m' : '—'}</div>
+      <div class="ed-s">Revisá la ficha en el visor antes de descargar. Con <b>Deshacer</b> (en la pestaña Plano) volvés a la ficha anterior.</div>` : ''}
+  </div>`;
+}
+async function edFicha(){
+  const ed = state.ed, st = () => $('edFichaSt');
+  try {
+    const smp = state.c3d?.res?.smp;
+    const par = ed.dxf.parcela?.[0]?.pts;
+    if (!par) throw new Error('el DXF no tiene la parcela dibujada en la capa 09-M-PARCELA');
+    $('edFicha').disabled = true; st().textContent = 'Consultando Ciudad 3D (manzana y parcelas linderas)…';
+    const F = await Ciudad3D.ficha(smp);
+    const cv = r => r.map(p => Geo.c3dACaba(p));
+    const res = Ficha.generar(ed.txt, { parcela: par, estudio: F.estudio ? cv(F.estudio) : null, vecinos: F.vecinos.map(v => ({ num: v.num, anillo: cv(v.anillo) })), manzana: F.manzana ? cv(F.manzana) : null });
+    ed.undo.push({ txt: ed.txt, decl: new Map(ed.decl) });
+    edCargar(res.txt);
+    ed.fichaInfo = res.info; ed.views.papel = null;
+    edDibujar(); edLateral();
+    evento('ficha-auto', 'Ficha parcelaria armada');
+  } catch(e){ if (st()) st().textContent = 'No se pudo armar la ficha: ' + (e.message || e); if ($('edFicha')) $('edFicha').disabled = false; console.error(e); }
 }
 
 /* ---------- Informe ---------- */
@@ -3793,13 +4131,11 @@ function render(){
 
 /* ---------- Descargas ---------- */
 const nombreArchivo = ext => `informe_TS_${(state.cert.calle||'inmueble').replace(/\s+/g,'')}${state.cert.nro||''}.${ext}`;
-// Descarga directa del archivo (versión web independiente)
+let dl = { save: async () => {} };
 async function guardar(filename, data, st = 'dlStatus'){
   const blob = data instanceof Blob ? data : new Blob([data]);
-  const url = URL.createObjectURL(blob);
-  const el = document.createElement('a');
-  el.href = url; el.download = filename; document.body.appendChild(el); el.click(); el.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   $(st).textContent = 'Listo: ' + filename;
 }
 $('bPrev').addEventListener('click', () => {
@@ -3837,7 +4173,6 @@ if (ENTORNO === 'web') $('privacidad').hidden = false;
 actualizar();
 if (ENTORNO === 'demo') $('bEjemplo').click();
 </script>
-
 <script data-goatcounter="https://cep-ef-ts.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>
