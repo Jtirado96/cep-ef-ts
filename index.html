@@ -2558,6 +2558,13 @@ const Ficha = (() => {
       const val = cc => { const p = g.find(([x]) => x === cc); return p ? p[1].trim() : null; };
       if (sec === 'TABLES' && v === 'BLOCK_RECORD' && /^\*paper_space$/i.test(val(2) || '')) r.psOwner = val(5);
       if (sec === 'TABLES' && v === 'STYLE' && val(2)) r.estilos.push(val(2));
+      if (sec === 'TABLES' && v === 'TABLE') { r.tabla = val(2); if (r.tabla === 'BLOCK_RECORD') r.brTabla = { ini: i, g }; }
+      if (sec === 'TABLES' && v === 'ENDTAB' && r.tabla === 'BLOCK_RECORD') r.brFin = i;
+      if (sec === 'TABLES' && v === 'BLOCK_RECORD' && val(2)) (r.brNombres ||= []).push(val(2));
+      if (sec === 'TABLES' && v === 'DIMSTYLE' && val(2)) (r.dimstyles ||= []).push({ ini: i, nombre: val(2), h: val(105) });
+      if (sec === 'TABLES' && v === 'LAYER' && val(2)) (r.capas ||= []).push(val(2).toUpperCase());
+      if (sec === 'BLOCKS' && v === 'ENDBLK') r.finBlk = k;
+      if (sec && sec !== 'HEADER' && v !== 'SECTION') (r.todos ||= []).push({ ini: i, fin: k, g, tipo: v.trim() });
       if (sec === 'ENTITIES') {
         const e = { tipo: v.trim(), ini: i, fin: k, g, capa: (val(8) || '0').toUpperCase(), papel: val(67) === '1' };
         r.ents.push(e);
@@ -2610,7 +2617,7 @@ const Ficha = (() => {
 
     const estilo = r.estilos.find(s => /^TEXTO$/i.test(s)) || r.estilos.find(s => /^ARIAL$/i.test(s)) || 'Standard';
     const nv = []; // entidades nuevas (grupos)
-    const ent = (tipo, capa, color, cuerpo) => nv.push({ tipo, capa, color, cuerpo });
+    const ent = (tipo, capa, color, cuerpo) => { const o = { tipo, capa, color, cuerpo, reactores: [] }; nv.push(o); return o; };
     const texto = (capa, color, p, alto, s, rot = 0) => ent('TEXT', capa, color, [['100', 'AcDbText'], ['10', p[0]], ['20', p[1]], ['30', 0], ['40', alto], ['1', s], ['50', rot], ['7', estilo], ['72', 1], ['11', p[0]], ['21', p[1]], ['31', 0], ['100', 'AcDbText'], ['73', 2]]);
     const linea = (capa, color, a, b) => ent('LINE', capa, color, [['100', 'AcDbLine'], ['10', a[0]], ['20', a[1]], ['30', 0], ['11', b[0]], ['21', b[1]], ['31', 0]]);
     const circulo = (capa, color, c, rr) => ent('CIRCLE', capa, color, [['100', 'AcDbCircle'], ['10', c[0]], ['20', c[1]], ['30', 0], ['40', rr]]);
@@ -2619,7 +2626,7 @@ const Ficha = (() => {
     ent('LWPOLYLINE', CAPA_CAR, 1, [['100', 'AcDbPolyline'], ['90', P.length], ['70', 1], ['43', 0], ...P.flatMap(p => [['10', p[0]], ['20', p[1]]])]);
     // círculo de la parcela (alrededor del número)
     const cNp = T(r.nparc || centroPar), rNp = 0.0068;
-    circulo(CAPA_CAR, 3, cNp, rNp);
+    const circNp = circulo(CAPA_CAR, 3, cNp, rNp);
     // superficies de planta baja y proyecciones de la planta superior (RT 19.4.4)
     const eLO = uni(sub(par[(iA + 1) % n], par[iA])); // dirección de la L.O.
     const angLO = Math.atan2(eLO[1], eLO[0]) * 180 / Math.PI;
@@ -2627,19 +2634,23 @@ const Ficha = (() => {
     const sups = (d.superficies || []).map(sp => ({ ...sp, anillo: limpiarAnillo(sp.anillo), verts: (sp.verts || sp.anillo).map(v => [v[0], v[1], v[2] || 0]) })).filter(sp => sp.anillo.length >= 3);
     const acotados = [];
     const vtx = vs => vs.flatMap(v => { const p = T(v); return v[2] ? [['10', p[0]], ['20', p[1]], ['42', v[2]]] : [['10', p[0]], ['20', p[1]]]; });
-    const vtxH = vs => vs.flatMap(v => { const p = T(v); return [['10', p[0]], ['20', p[1]], ['42', v[2] || 0]]; });
-    const rayado = (vs, angulo, sep, huecos) => {
-      const conB = vs.some(v => v[2]);
-      const caminos = [['92', 3], ['72', conB ? 1 : 0], ['73', 1], ['93', vs.length], ...(conB ? vtxH(vs) : vtx(vs)), ['97', 0]];
-      let nb = 1;
+    const vtxH = vs => vs.flatMap(v => { const p = T(v); return [['10', p[0]], ['20', p[1]], ['42', v[2] || '0.0']]; });
+    // Rayado asociativo, como lo arma AutoCAD: el contorno es la polilínea de la superficie y las islas
+    // son el círculo verde del número de parcela y las superficies interiores (cada una vinculada a su entidad)
+    const rayado = (sp, angulo, sep, huecos, semilla) => {
+      const I = v => String(v).padStart(9, ' '), I6 = v => String(v).padStart(6, ' ');
+      const camino = (flag, vs, obj) => { const hb = vs.some(v => v[2]); return [['92', I(flag)], ['72', I6(hb ? 1 : 0)], ['73', I6(1)], ['93', I(vs.length)], ...(hb ? vtxH(vs) : vtx(vs)), ['97', I(1)], ['330', { ref: obj }]]; };
+      const caminos = [...camino(7, sp.verts, sp.obj)];
       for (const h of huecos) {
-        if (h.circulo) { caminos.push(['92', 2], ['72', 1], ['73', 1], ['93', 2], ['10', h.c[0] + h.r], ['20', h.c[1]], ['42', -1], ['10', h.c[0] - h.r], ['20', h.c[1]], ['42', -1], ['97', 0]); }
-        else { const hb = h.verts.some(v => v[2]); caminos.push(['92', 2], ['72', hb ? 1 : 0], ['73', 1], ['93', h.verts.length], ...(hb ? vtxH(h.verts) : vtx(h.verts)), ['97', 0]); }
-        nb++;
+        if (h.circulo) caminos.push(['92', I(22)], ['72', I6(1)], ['73', I6(1)], ['93', I(2)], ['10', h.c[0] + h.r], ['20', h.c[1]], ['42', '-1.0'], ['10', h.c[0] - h.r], ['20', h.c[1]], ['42', '-1.0'], ['97', I(1)], ['330', { ref: h.obj }]);
+        else caminos.push(...camino(22, h.verts, h.obj));
       }
       const a = ((angulo % 180) + 180) % 180, ar = a * Math.PI / 180;
-      ent('HATCH', CAPA_CAR, 256, [['100', 'AcDbHatch'], ['10', 0], ['20', 0], ['30', 0], ['210', 0], ['220', 0], ['230', 1], ['2', '_USER'], ['70', 0], ['71', 0], ['91', nb],
-        ...caminos, ['75', 0], ['76', 0], ['52', a], ['41', 1], ['77', 0], ['78', 1], ['53', a], ['43', 0], ['44', 0], ['45', -sep * Math.sin(ar)], ['46', sep * Math.cos(ar)], ['79', 0], ['47', 0.0002], ['98', 0]]);
+      const giro = ((a - 45) % 360 + 360) % 360, escala = sep / 3.175;
+      const hatch = ent('HATCH', CAPA_CAR, 256, [['100', 'AcDbHatch'], ['10', '0.0'], ['20', '0.0'], ['30', '0.0'], ['210', '0.0'], ['220', '0.0'], ['230', '1.0'], ['2', 'ANSI31'], ['70', '     0'], ['71', '     1'], ['91', I(1 + huecos.length)],
+        ...caminos, ['75', '     1'], ['76', '     1'], ['52', giro], ['41', escala], ['77', '     0'], ['78', '     1'], ['53', a], ['43', '0.0'], ['44', '0.0'], ['45', -sep * Math.sin(ar)], ['46', sep * Math.cos(ar)], ['79', '     0'], ['47', 0.0002], ['98', '     1'], ['10', semilla[0]], ['20', semilla[1]]]);
+      sp.obj.reactores.push(hatch);
+      for (const h of huecos) h.obj.reactores.push(hatch);
     };
     // segmentos de una recta (p + t·u) que quedan dentro de un anillo
     const dentroDe = (p, u, an) => {
@@ -2655,18 +2666,30 @@ const Ficha = (() => {
       return out;
     };
     const nparcM = r.nparc || centroPar, rNpM = 0.0068 * N;
+    // primero las polilíneas de todas las superficies (son los contornos de los rayados)
+    for (const sp of sups) if (sp.tipo) sp.obj = ent('LWPOLYLINE', CAPA_CAR, 256, [['100', 'AcDbPolyline'], ['90', sp.verts.length], ['70', 1], ['43', 0], ...vtx(sp.verts)]);
     for (const sp of sups) {
       const tipo = sp.tipo;
       if (!tipo) continue;
       supOut[tipo]++;
       const an = sp.anillo, vs = sp.verts;
-      ent('LWPOLYLINE', CAPA_CAR, 256, [['100', 'AcDbPolyline'], ['90', vs.length], ['70', 1], ['43', 0], ...vtx(vs)]);
       // huecos: superficies que están dentro y el círculo del número de parcela
       const ctr = q => mul(q.reduce((a, p) => add(a, p), [0, 0]), 1 / q.length);
-      const huecos = sups.filter(o => o !== sp && Math.abs(area2(o.anillo)) < Math.abs(area2(an)) && dentro(ctr(o.anillo), an)).map(o => ({ verts: o.verts }));
-      if (dentro(nparcM, an)) huecos.push({ circulo: true, c: T(nparcM), r: 0.0068 });
-      if (tipo === 'cubierta') rayado(vs, angLO + 45, 0.0012, huecos);
-      else if (tipo === 'precaria') rayado(vs, angLO + 90, 0.0012, huecos);
+      const islas = sups.filter(o => o !== sp && o.obj && Math.abs(area2(o.anillo)) < Math.abs(area2(an)) && dentro(ctr(o.anillo), an));
+      const huecos = islas.map(o => ({ verts: o.verts, obj: o.obj }));
+      const conCirc = dentro(nparcM, an);
+      if (conCirc) huecos.push({ circulo: true, c: T(nparcM), r: 0.0068, obj: circNp });
+      // punto semilla: un punto interior fuera de las islas
+      let sem = null;
+      for (let k = 0; k < 200 && !sem; k++) {
+        const t1 = (k * 0.618) % 1, t2 = (k * 0.382 + 0.5) % 1;
+        const a0 = an[0], a1 = an[(1 + k) % an.length], a2 = an[(2 + k) % an.length];
+        const q = add(a0, add(mul(sub(a1, a0), t1 * (1 - t2)), mul(sub(a2, a0), t2 * (1 - t1))));
+        if (dentro(q, an) && !islas.some(o => dentro(q, o.anillo)) && !(conCirc && len(sub(q, nparcM)) < 0.0068 * N * 1.2)) sem = q;
+      }
+      sem = T(sem || ctr(an));
+      if (tipo === 'cubierta') rayado(sp, angLO + 45, 0.0012, huecos, sem);
+      else if (tipo === 'precaria') rayado(sp, angLO + 90, 0.0012, huecos, sem);
       else if (tipo === 'semicubierta') {
         // doble línea cruzada: las diagonales del rectángulo alineado con la L.O. que contiene al polígono
         const nLO = [-eLO[1], eLO[0]];
@@ -2678,22 +2701,12 @@ const Ficha = (() => {
           for (const [x, y] of dentroDe(a, u, an)) linea(CAPA_CAR, 256, T(x), T(y));
         }
       }
-      // medidas de los lados de la superficie (por dentro), salvo las que coinciden con un lado de la parcela
-      const sg = Math.sign(area2(vs)) || 1;
-      const igual = (a, b, p, q) => (len(sub(p, a)) < 0.05 && len(sub(q, b)) < 0.05) || (len(sub(p, b)) < 0.05 && len(sub(q, a)) < 0.05);
-      for (let k = 0; k < vs.length; k++) {
-        if (vs[k][2]) continue; // tramos curvos: no se acotan como recta
-        const a = vs[k], b = vs[(k + 1) % vs.length], l = len(sub(b, a));
-        if (l < 0.5) continue;
-        if (par.some((p, m) => igual(a, b, p, par[(m + 1) % n]))) continue;
-        if (acotados.some(([p, q]) => igual(a, b, p, q))) continue; // lado compartido con otra superficie
-        acotados.push([a, b]);
-        const e = uni(sub(b, a)), adentro = mul([-e[1], e[0]], sg);
-        texto(CAPA_MED, 7, add(mul(add(T(a), T(b)), .5), mul(adentro, 0.0016)), 0.0014, l.toFixed(2), angLegible(e));
-      }
     }
-    // letras y medidas de los lados
+    // letras y medidas de los lados (cotas con el estilo de la plantilla, si existe)
     const lados = [];
+    const dsBase = (r.dimstyles || []).find(x => /^01-00_M_GRANDE$/i.test(x.nombre)) || (r.dimstyles || []).find(x => /GRANDE/i.test(x.nombre));
+    const dimEstilo = dsBase && r.brTabla && r.brFin != null && r.finBlk != null ? { ...dsBase, nuevas: [] } : null;
+    let dimN = Math.max(0, ...(r.brNombres || []).map(nm => (/^\*D(\d+)$/i.exec(nm) || [, 0])[1] * 1));
     orden.forEach((i, k) => {
       const j = (i + 1) % n, kk = (k + 1) % n;
       // letra: hacia afuera, en la bisectriz
@@ -2702,7 +2715,21 @@ const Ficha = (() => {
       const u = sub(par[j], par[i]), l = len(u);
       const nom = letra(k) + letra(kk) + '=' + l.toFixed(2);
       lados.push(nom);
-      texto(CAPA_MED, 7, add(mul(add(P[i], P[j]), .5), mul(afuera(i), 0.0035)), 0.003, nom, angLegible(u));
+      if (dimEstilo) {
+        // cota alineada como en la ficha de ejemplo: sin líneas, solo el texto «AB=<>» con DIMLFAC = escala
+        const derecha = Math.abs(angLegible(u) - Math.atan2(u[1], u[0]) * 180 / Math.PI) < 1e-6;
+        const p13 = derecha ? P[i] : P[j], p14 = derecha ? P[j] : P[i];
+        const no = afuera(i), dd = 0.0031;
+        const p10 = add(p14, mul(no, dd)), p11 = add(mul(add(P[i], P[j]), .5), mul(no, dd));
+        const dir = uni(sub(p14, p13));
+        const nombreBloque = '*D' + (++dimN);
+        const dim = ent('DIMENSION', CAPA_MED, 7, [['100', 'AcDbDimension'], ['280', '     0'], ['2', nombreBloque], ['10', p10[0]], ['20', p10[1]], ['30', '0.0'], ['11', p11[0]], ['21', p11[1]], ['31', '0.0'],
+          ['70', '   161'], ['71', '     5'], ['42', l], ['73', '     0'], ['74', '     0'], ['75', '     0'], ['3', dimEstilo.nombre], ['100', 'AcDbAlignedDimension'],
+          ['13', p13[0]], ['23', p13[1]], ['33', '0.0'], ['14', p14[0]], ['24', p14[1]], ['34', '0.0'],
+          ['1001', 'ACAD'], ['1000', 'DSTYLE'], ['1002', '{'], ['1070', '     3'], ['1000', letra(k) + letra(kk) + '=<>'], ['1070', '   140'], ['1040', 0.003], ['1070', '   144'], ['1040', N], ['1002', '}']]);
+        dim.bloque = { nombre: nombreBloque, texto: nom, p11, dir, puntos: [p13, p14, p10] };
+        dimEstilo.nuevas.push(dim);
+      } else texto(CAPA_MED, 7, add(mul(add(P[i], P[j]), .5), mul(afuera(i), 0.0035)), 0.003, nom, angLegible(u));
     });
 
     // linderos (Ciudad 3D)
@@ -2734,6 +2761,11 @@ const Ficha = (() => {
     }
     // marcas de los linderos que llegan a cada vértice, y línea de edificación con la distancia a la esquina
     const largo = 0.017;
+    // parcela en esquina: el frente dobla (lados de frente con direcciones distintas) o llega a un vértice de la manzana.
+    // En ese caso no se acota la distancia a la esquina.
+    const dirsFrente = orden.filter(j => frente[j]).map(j => uni(sub(par[(j + 1) % n], par[j])));
+    const esquina = dirsFrente.some(a => dirsFrente.some(b => Math.abs(a[0] * b[0] + a[1] * b[1]) < Math.cos(20 * Math.PI / 180)))
+      || (!!d.manzana && par.some((p, j) => (frente[j] || frente[(j - 1 + n) % n]) && limpiarAnillo(d.manzana).some(W => len(sub(W, p)) < 2)));
     const marcas = [];
     const dirFrente = [];
     orden.forEach(i => {
@@ -2772,7 +2804,7 @@ const Ficha = (() => {
           const rot = angLegible(u), nrm = [-u[1], u[0]];
           const haciaCalle = d.manzana ? (dentro(add(V, mul(nrm, 1)), d.manzana) ? mul(nrm, -1) : nrm) : nrm;
           texto(CAPA_CAR, 256, add(b, mul(u, 0.003)), 0.0015, 'L.E.', rot);
-          if (d.manzana) {
+          if (d.manzana && !esquina) {
             // distancia a la esquina: vértice de la manzana sobre la prolongación del frente
             const cand = limpiarAnillo(d.manzana).map(W => { const w = sub(W, V); return { t: w[0] * u[0] + w[1] * u[1], e: Math.abs(w[0] * u[1] - w[1] * u[0]) }; }).filter(c => c.t > 0.5 && c.e < 3);
             const t = cand.length ? Math.min(...cand.map(c => c.t)) : rayo(V, u, d.manzana);
@@ -2791,10 +2823,27 @@ const Ficha = (() => {
     const fmt = v => typeof v === 'number' ? String(Math.round(v * 1e10) / 1e10) : v;
     let h = Math.max(r.seed, r.maxH + 1);
     const lineas = [];
+    for (const e of nv) e.h = (h++).toString(16).toUpperCase();
+    // bloques anónimos *Dn de las cotas: registro en la tabla BLOCK_RECORD y definición en BLOCKS
+    const linBR = [], linBlk = [];
+    const push = (arr, g) => { for (const [c, v] of g) arr.push(String(c).padStart(3, ' '), fmt(v)); };
+    const hayDefpoints = (r.capas || []).includes('DEFPOINTS');
+    const estiloTxt = r.estilos.find(x => /^ARIAL$/i.test(x)) || estilo;
+    const brTablaH = (r.brTabla.g.find(([c]) => c === 5) || [, ''])[1].trim();
+    if (dimEstilo) for (const e of dimEstilo.nuevas) {
+      const b = e.bloque, hBR = (h++).toString(16).toUpperCase(), hB = (h++).toString(16).toUpperCase();
+      push(linBR, [['0', 'BLOCK_RECORD'], ['5', hBR], ['330', brTablaH], ['100', 'AcDbSymbolTableRecord'], ['100', 'AcDbBlockTableRecord'], ['2', b.nombre], ['340', '0'], ['70', '     0'], ['280', '     1'], ['281', '     0']]);
+      push(linBlk, [['0', 'BLOCK'], ['5', hB], ['330', hBR], ['100', 'AcDbEntity'], ['8', '0'], ['100', 'AcDbBlockBegin'], ['2', b.nombre], ['70', '     1'], ['10', '0.0'], ['20', '0.0'], ['30', '0.0'], ['3', b.nombre], ['1', '']]);
+      push(linBlk, [['0', 'MTEXT'], ['5', (h++).toString(16).toUpperCase()], ['330', hBR], ['100', 'AcDbEntity'], ['8', CAPA_MED], ['62', '     7'], ['100', 'AcDbMText'], ['10', b.p11[0]], ['20', b.p11[1]], ['30', '0.0'], ['40', 0.003], ['41', '0.0'], ['46', '0.0'], ['71', '     5'], ['72', '     1'], ['1', '\\A1;' + b.texto], ['7', estiloTxt], ['11', b.dir[0]], ['21', b.dir[1]], ['31', '0.0'], ['73', '     1'], ['44', '1.0']]);
+      if (hayDefpoints) for (const p of b.puntos) push(linBlk, [['0', 'POINT'], ['5', (h++).toString(16).toUpperCase()], ['330', hBR], ['100', 'AcDbEntity'], ['8', 'Defpoints'], ['62', '     0'], ['100', 'AcDbPoint'], ['10', p[0]], ['20', p[1]], ['30', '0.0']]);
+      push(linBlk, [['0', 'ENDBLK'], ['5', (h++).toString(16).toUpperCase()], ['330', hBR], ['100', 'AcDbEntity'], ['8', '0'], ['100', 'AcDbBlockEnd']]);
+    }
     for (const e of nv) {
-      const g = [['0', e.tipo], ['5', (h++).toString(16).toUpperCase()], ['330', r.psOwner], ['100', 'AcDbEntity'], ['67', '     1'], ['8', e.capa]];
+      const g = [['0', e.tipo], ['5', e.h]];
+      if (e.reactores.length) g.push(['102', '{ACAD_REACTORS'], ...e.reactores.map(x => ['330', x.h]), ['102', '}']);
+      g.push(['330', r.psOwner], ['100', 'AcDbEntity'], ['67', '     1'], ['8', e.capa]);
       if (e.color !== 256) g.push(['62', String(e.color).padStart(6, ' ')]);
-      g.push(...e.cuerpo);
+      g.push(...e.cuerpo.map(([c, v]) => [c, v && typeof v === 'object' ? v.ref.h : v]));
       for (const [c, v] of g) lineas.push(String(c).padStart(3, ' '), fmt(v));
     }
     // borrar lo generado antes (si se vuelve a generar) y actualizar ventana y escala
@@ -2802,8 +2851,44 @@ const Ficha = (() => {
       (e.capa === CAPA_MED && /^(TEXT|MTEXT|DIMENSION|LINE|LWPOLYLINE)$/.test(e.tipo)) ||
       (e.capa === CAPA_CAR && /^(LWPOLYLINE|HATCH|CIRCLE|LINE)$/.test(e.tipo)) ||
       (e.capa === CAPA_CAR && e.tipo === 'TEXT' && /^(\d{3}[A-Z]?|L\.E\.|\d+[.,]\d+)$/i.test((e.g.find(([c]) => c === 1) || [, ''])[1].trim()))));
+    const hBorr0 = new Set(borrar.map(e => (e.g.find(([c]) => c === 5) || [, ''])[1].trim()));
     const cambios = []; // [ini, fin, nuevas líneas]
     borrar.forEach(e => cambios.push([e.ini, e.fin, []]));
+    // quitar las referencias a lo borrado: reactores (rayados y cotas asociativas), grupos y orden de dibujo
+    const hBorr = hBorr0;
+    // reactores nuevos: el estilo de cota apunta a sus cotas
+    const extra = new Map();
+    if (dimEstilo && dimEstilo.nuevas.length) extra.set(dimEstilo.ini, dimEstilo.nuevas.map(e => e.h));
+    for (const o of r.todos || []) {
+      if (borrar.some(e => e.ini === o.ini) || o.ini === vp.ini || (esc && o.ini === esc.ini)) continue;
+      const g = o.g, mas = extra.get(o.ini) || [];
+      if (!mas.length && !g.some(([c, v]) => (c === 330 || c === 331 || c === 340) && hBorr.has(v.trim()))) continue;
+      const g2 = []; let enReact = false, cambio = false;
+      for (let k = 0; k < g.length; k++) {
+        const [c, v] = g[k], t = v.trim();
+        if (c === 102) { if (t === '{ACAD_REACTORS') enReact = true; else if (t === '}') enReact = false; g2.push([c, v]); continue; }
+        if (enReact && c === 330 && hBorr.has(t)) { cambio = true; continue; }
+        if (o.tipo === 'GROUP' && c === 340 && hBorr.has(t)) { cambio = true; continue; }
+        if (o.tipo === 'SORTENTSTABLE' && c === 331 && hBorr.has(t)) { cambio = true; if (g[k + 1] && g[k + 1][0] === 5) k++; continue; }
+        g2.push([c, v]);
+      }
+      if (mas.length) {
+        cambio = true;
+        const i0 = g2.findIndex(([c, v]) => c === 102 && v.trim() === '{ACAD_REACTORS');
+        if (i0 >= 0) { let i1 = i0 + 1; while (g2[i1][0] !== 102) i1++; g2.splice(i1, 0, ...mas.map(hh => [330, hh])); }
+        else { const iH = g2.findIndex(([c]) => c === 5 || c === 105); g2.splice(iH + 1, 0, [102, '{ACAD_REACTORS'], ...mas.map(hh => [330, hh]), [102, '}']); }
+      }
+      if (!cambio) continue;
+      // grupo de reactores vacío: se quita entero
+      const g3 = [];
+      for (let k = 0; k < g2.length; k++) {
+        if (g2[k][0] === 102 && g2[k][1].trim() === '{ACAD_REACTORS' && g2[k + 1] && g2[k + 1][0] === 102 && g2[k + 1][1].trim() === '}') { k++; continue; }
+        g3.push(g2[k]);
+      }
+      const out2 = [L[o.ini], L[o.ini + 1]];
+      for (const [c, v] of g3) out2.push(String(c).padStart(3, ' '), v);
+      cambios.push([o.ini, o.fin, out2]);
+    }
     // ventana: centro y altura de vista
     {
       const out = [];
@@ -2820,10 +2905,17 @@ const Ficha = (() => {
       cambios.push([esc.ini, esc.fin, out]);
     }
     let out = L;
-    out.splice(r.finEnt, 0, ...lineas);
+    // todos los cambios de atrás hacia adelante (la tabla de orden de dibujo está después de ENTITIES)
+    cambios.push([r.finEnt, r.finEnt, lineas]);
+    if (linBR.length) {
+      cambios.push([r.brFin, r.brFin, linBR], [r.finBlk, r.finBlk, linBlk]);
+      // cantidad de registros de la tabla BLOCK_RECORD
+      const m = r.brTabla.g.findIndex(([c]) => c === 70);
+      if (m >= 0) { const li = r.brTabla.ini + 3 + 2 * m; out[li] = String((parseInt(out[li], 10) || 0) + dimEstilo.nuevas.length).padStart(6, ' '); }
+    }
     cambios.sort((a, b) => b[0] - a[0]).forEach(([i, f, nuevas]) => out.splice(i, f - i, ...nuevas));
     if (r.seedLinea != null) out[r.seedLinea] = h.toString(16).toUpperCase();
-    return { txt: out.join(r.eol), info: { escala: N, lados, vecinos: vecinosOut, distancias: dirFrente, superficies: supOut, borrados: borrar.length } };
+    return { txt: out.join(r.eol), info: { escala: N, lados, vecinos: vecinosOut, distancias: dirFrente, esquina, superficies: supOut, borrados: borrar.length } };
   }
 
   // Nº de expediente en la ficha: reemplaza el texto EX-… del layout o lo agrega arriba a la izquierda
@@ -3801,7 +3893,7 @@ function edCardFicha(){
     <button type="button" class="tb" id="edFicha" ${online && smp ? '' : 'disabled'}>${I ? 'Volver a armar la ficha' : 'Armar ficha con Ciudad 3D'}</button>
     <div class="ed-s" id="edFichaSt">${!online ? 'Disponible en la versión publicada de la página (necesita consultar Ciudad 3D).' : !smp ? 'Primero la parcela tiene que encontrarse en Ciudad 3D (paso 2).' : I ? '' : 'Si el layout ya tiene una ficha dibujada, se reemplazan el contorno, las medidas y los linderos; el norte, el número de expediente y el recuadro quedan como están.'}</div>
     <label class="ed-f">Nº de expediente (arriba a la izquierda)<input id="edExp" value="${esc(ed.expediente ?? Ficha.expedienteActual(ed.txt))}" placeholder="EX-2026-12345678- -GCABA-DGROC" autocomplete="off"></label>
-    ${I ? `<div class="ed-s"><b>Escala:</b> 1:${I.escala}<br><b>Superficies en planta baja:</b> ${[['cubierta','cubiertas (rayado a 45°)'],['semicubierta','semicubiertas (doble línea cruzada)'],['descubierta','descubiertas'],['precaria','precarias (rayado a 90°)']].filter(([k]) => I.superficies?.[k]).map(([k, t]) => I.superficies[k] + ' ' + t).join(' · ') || 'ninguna'}${ed.fichaFuera?.length ? `<br><b>Fuera de la parcela (no se dibujan):</b> ${ed.fichaFuera.map(p => f(p.area) + ' m² de ' + Engine.NOMBRE_PLANTA(p.planta)).join(' · ')}. Si es un balcón o cuerpo sobre la vereda, corresponde representarlo como invasión a la vía pública (RT 19.4.4.2 e).` : ''}<br><b>Lados:</b> ${I.lados.join(' · ')}<br><b>Linderas:</b> ${I.vecinos.length ? I.vecinos.join(' · ') : 'no se encontraron'}<br><b>Distancia a las esquinas (L.E.):</b> ${I.distancias.length ? I.distancias.join(' m · ') + ' m' : '—'}</div>
+    ${I ? `<div class="ed-s"><b>Escala:</b> 1:${I.escala}<br><b>Superficies en planta baja:</b> ${[['cubierta','cubiertas (rayado a 45°)'],['semicubierta','semicubiertas (doble línea cruzada)'],['descubierta','descubiertas'],['precaria','precarias (rayado a 90°)']].filter(([k]) => I.superficies?.[k]).map(([k, t]) => I.superficies[k] + ' ' + t).join(' · ') || 'ninguna'}${ed.fichaFuera?.length ? `<br><b>Fuera de la parcela (no se dibujan):</b> ${ed.fichaFuera.map(p => f(p.area) + ' m² de ' + Engine.NOMBRE_PLANTA(p.planta)).join(' · ')}. Si es un balcón o cuerpo sobre la vereda, corresponde representarlo como invasión a la vía pública (RT 19.4.4.2 e).` : ''}<br><b>Lados:</b> ${I.lados.join(' · ')}<br><b>Linderas:</b> ${I.vecinos.length ? I.vecinos.join(' · ') : 'no se encontraron'}<br><b>Distancia a las esquinas (L.E.):</b> ${I.esquina ? 'no corresponde, la parcela está en esquina' : I.distancias.length ? I.distancias.join(' m · ') + ' m' : 'sin datos de la manzana en Ciudad 3D'}</div>
       <div class="ed-s">Revisá la ficha en el visor antes de descargar. Con <b>Deshacer</b> (en la pestaña Plano) volvés a la ficha anterior.</div>` : ''}
   </div>`;
 }
