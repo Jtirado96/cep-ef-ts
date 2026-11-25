@@ -781,29 +781,47 @@ input.num{font-family:var(--f-mono); text-align:right}
 .report{display:grid; gap:12px}
 .rep-h{font-family:var(--f-display); font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:8px 0 0; text-align:center}
 .bq{display:grid; gap:12px}
-.ed{border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--surface)}
-.ed-bar{display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; padding:8px 10px; border-bottom:1px solid var(--line); background:var(--surface-2)}
-.ed-tabs,.ed-tools{display:flex; flex-wrap:wrap; gap:6px}
-.ed .tab,.ed .tb{font:inherit; font-size:12.5px; font-weight:600; padding:6px 11px; border-radius:7px; border:1px solid var(--line); background:var(--surface); color:var(--ink); cursor:pointer}
+.ed{border-block:1px solid var(--line); background:var(--surface); box-sizing:border-box; position:relative}
+.ed-bar{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px 14px; padding:8px 14px; border-bottom:1px solid var(--line); background:var(--surface-2)}
+.ed-bar2{justify-content:flex-start; gap:8px 24px; padding-block:6px; background:var(--surface)}
+.ed-bar[hidden]{display:none}
+.ed-grp,.ed-tabs,.ed-tools,.ed-pages,.ed-capas,.ed-obra{display:flex; flex-wrap:wrap; align-items:center; gap:6px}
+.ed-grp{gap:14px}
+.ed-pages{padding:3px; border-radius:9px; background:var(--line)}
+.ed .pg{font:inherit; font-size:12.5px; font-weight:600; padding:6px 12px; border-radius:7px; border:0; background:transparent; color:var(--muted); cursor:pointer}
+.ed .pg[aria-selected="true"]{background:var(--surface); color:var(--ink); box-shadow:0 1px 2px rgba(15,34,51,.12)}
+.ed .tab,.ed .tb{font:inherit; font-size:12.5px; font-weight:600; padding:6px 11px; border-radius:7px; border:1px solid var(--line); background:var(--surface); color:var(--ink); cursor:pointer; white-space:nowrap}
 .ed .tab[aria-selected="true"],.ed .tb[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
-.ed-main{display:grid; grid-template-columns:minmax(0,1fr) 290px}
-.ed-view{position:relative; min-height:460px; border-right:1px solid var(--line)}
-.ed-view svg{position:absolute; inset:0; width:100%; height:100%; cursor:crosshair; touch-action:none; background:var(--surface); outline:none}
-.ed-hint{position:absolute; left:10px; right:10px; bottom:10px; font-size:12px; color:var(--muted); background:color-mix(in srgb, var(--surface) 88%, transparent); padding:6px 9px; border-radius:6px; border:1px solid var(--line); pointer-events:none}
-.ed-lbl{font:600 11px 'IBM Plex Mono',monospace; fill:var(--ink)}
-.ed-snap{font:600 11px 'IBM Plex Sans',sans-serif; fill:var(--accent)}
-.ed-side{display:flex; flex-direction:column; gap:10px; padding:12px; background:var(--surface-2)}
+.ed .tb-file{display:inline-flex; align-items:center}
+.ed-lab{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-right:2px}
+.ed-sw{display:inline-flex; align-items:center; gap:5px; font-size:12.5px; color:var(--ink); cursor:pointer}
+.ed-sw input[type=range]{width:90px; accent-color:var(--accent)}
+.ed-sw select{font:inherit; font-size:12px; padding:2px 4px; border:1px solid var(--line); border-radius:5px; background:var(--surface); color:var(--ink)}
+.ed-main{display:grid; grid-template-columns:minmax(0,1fr) 320px}
+.ed-view{position:relative; height:max(520px, calc(100vh - 170px)); border-right:1px solid var(--line)}
+.ed-view svg{position:absolute; inset:0; width:100%; height:100%; cursor:crosshair; touch-action:none; background:#fff; outline:none}
+.ed-view svg.papel{background:#e9eef2; cursor:grab}
+.ed-view svg text{font-family:'IBM Plex Sans',Arial,sans-serif}
+.ed-hint{position:absolute; left:12px; right:12px; bottom:12px; font-size:12px; color:#3d4f60; background:rgba(255,255,255,.92); padding:6px 9px; border-radius:6px; border:1px solid var(--line); pointer-events:none}
+.ed-lbl{font:600 11px 'IBM Plex Mono',monospace; fill:#0f2233; paint-order:stroke; stroke:#fff; stroke-width:3px}
+.ed-snap{font:600 11px 'IBM Plex Sans',sans-serif; fill:var(--accent); paint-order:stroke; stroke:#fff; stroke-width:3px}
+.ed-side{display:flex; flex-direction:column; gap:10px; padding:12px; background:var(--surface-2); overflow-y:auto; height:max(520px, calc(100vh - 170px)); box-sizing:border-box}
 .ed-card{background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:10px 12px; display:grid; gap:6px}
 .ed-k{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
 .ed-v{font:600 20px 'IBM Plex Mono',monospace}
 .ed-s{font-size:12px; color:var(--muted); line-height:1.45}
+.ed-s b{color:var(--ink)}
 .ed-chk{display:flex; gap:8px; align-items:center; font-size:13px; font-weight:600}
 .ed-f{display:grid; gap:4px; font-size:12px; color:var(--muted)}
 .ed-f select,.ed-f input{width:100%; min-width:0; box-sizing:border-box; font:inherit; font-size:13px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--surface); color:var(--ink)}
 .ed-list{margin:0; padding-left:18px; font-size:12px; display:grid; gap:3px}
-.ed-list button{font:inherit; color:var(--accent); background:none; border:0; padding:0; cursor:pointer; font-weight:600}
+.ed-list button,.ed .lnk{font:inherit; color:var(--accent); background:none; border:0; padding:0; cursor:pointer; font-weight:600; text-decoration:underline; text-underline-offset:2px}
+.ed-list button{text-decoration:none}
+.ed-sug{list-style:none; margin:0; padding:0; display:grid; gap:6px}
+.ed-sug li{display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px; padding:6px 8px; border:1px solid var(--line); border-radius:6px}
+.ed-sug .tb{padding:4px 9px; font-size:12px}
 .ed-side .btn[disabled]{opacity:.5; cursor:not-allowed}
-@media (max-width:860px){ .ed-main{grid-template-columns:1fr} .ed-view{border-right:0; border-bottom:1px solid var(--line); min-height:380px} }
+@media (max-width:860px){ .ed-main{grid-template-columns:1fr} .ed-view{border-right:0; border-bottom:1px solid var(--line); height:420px} .ed-side{height:auto} }
 .bq p{margin:0; font-size:13.5px; line-height:1.55}
 .bq .bq-row{display:flex; flex-wrap:wrap; align-items:center; gap:12px}
 .bq .bq-row .st{font-size:12.5px; color:var(--muted)}
@@ -2130,7 +2148,8 @@ const Editor = (() => {
   // Devuelve trazos (polilíneas en coordenadas del dibujo) y textos, con capa y color ACI resueltos.
   function geometria(txt) {
     const L = txt.split(/\r?\n/);
-    const capas = {}; const bloques = {}; const ents = [];
+    const iv = L.findIndex(l => l.trim() === '$ACADVER'); const utf8 = iv >= 0 && (L[iv + 2] || '').trim() >= 'AC1021';
+    const capas = {}; const capaH = {}; const bloques = {}; const ents = []; const layouts = {}; const brec = {};
     let sec = null, blq = null, i = 0;
     const leerEnt = j => { // grupos de la entidad que empieza en j (L[j] = '0')
       const g = []; let k = j + 2;
@@ -2147,6 +2166,14 @@ const Editor = (() => {
         const n = (e.g.find(([k]) => k === 2) || [, ''])[1].trim().toUpperCase();
         const col = e.g.find(([k]) => k === 62); const fl = e.g.find(([k]) => k === 70);
         capas[n] = { color: col ? Math.abs(+col[1]) : 7, apagada: col ? +col[1] < 0 : false, congelada: fl ? (+fl[1] & 1) === 1 : false };
+        const hh = e.g.find(([k]) => k === 5); if (hh) capaH[hh[1].trim()] = n;
+      } else if (sec === 'TABLES' && e.tipo === 'BLOCK_RECORD') {
+        const hh = e.g.find(([k]) => k === 5), nn = e.g.find(([k]) => k === 2);
+        if (hh && nn) brec[hh[1].trim()] = nn[1].trim();
+      } else if (sec === 'OBJECTS' && e.tipo === 'LAYOUT') {
+        const iL = e.g.findIndex(([k, v]) => k === 100 && v.trim() === 'AcDbLayout');
+        const nn = e.g.slice(iL).find(([k]) => k === 1), r = e.g.find(([k]) => k === 340), o = e.g.slice(iL).find(([k]) => k === 71);
+        if (nn && r) layouts[r[1].trim()] = { nombre: nn[1].trim(), orden: o ? +o[1] : 0 };
       } else if (sec === 'BLOCKS') {
         if (e.tipo === 'BLOCK') { const n = (e.g.find(([k]) => k === 2) || [, ''])[1].trim(); blq = bloques[n.toLowerCase()] = []; }
         else if (e.tipo === 'ENDBLK') blq = null;
@@ -2164,10 +2191,10 @@ const Editor = (() => {
         if (ents[k + 1] && ents[k + 1].tipo === 'SEQEND') k++;
         e.verts = verts;
       }
-      if (e.tipo === 'ATTRIB' || e.tipo === 'SEQEND' || e.tipo === 'VERTEX') continue;
+      if (e.tipo === 'SEQEND' || e.tipo === 'VERTEX') continue;
       plano.push(e);
     }
-    const trazos = [], textos = [];
+    const modelo = { trazos: [], textos: [], rellenos: [] }, papel = { trazos: [], textos: [], rellenos: [], vports: [] };
     const val = (g, k, d = 0) => { const p = g.find(([c]) => c === k); return p ? p[1] : d; };
     const num = (g, k, d = 0) => +val(g, k, d);
     const colorDe = (g, capa, colBloque) => {
@@ -2185,9 +2212,9 @@ const Editor = (() => {
       for (let s = 0; s <= n; s++) { const a = (a0 + d * s / n) * Math.PI / 180; out.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); }
       return out;
     };
-    function emitir(lista, m, capaPadre, colPadre, prof, extra) {
+    function emitir(lista, m, capaPadre, colPadre, prof, extra, dest) {
+      const { trazos, textos, rellenos } = dest;
       for (const e of lista) {
-        if (num(e.g, 67) === 1) continue; // espacio papel
         let capa = val(e.g, 8, '0').trim().toUpperCase();
         if (capa === '0' && capaPadre) capa = capaPadre;
         if (capas[capa]?.apagada || capas[capa]?.congelada) continue;
@@ -2204,13 +2231,48 @@ const Editor = (() => {
           for (let k = 0; k < n; k++) pts.push(...seg(vs[k], vs[(k + 1) % vs.length]).slice(k ? 1 : 0));
         } else if (e.tipo === 'CIRCLE') pts.push(...arco(num(e.g, 10), num(e.g, 20), num(e.g, 40), 0, 360));
         else if (e.tipo === 'ARC') pts.push(...arco(num(e.g, 10), num(e.g, 20), num(e.g, 40), num(e.g, 50), num(e.g, 51)));
-        else if (e.tipo === 'TEXT' || e.tipo === 'MTEXT') {
+        else if (e.tipo === 'VIEWPORT') {
+          if (dest.vports && num(e.g, 69) !== 1) dest.vports.push({ cx: num(e.g, 10), cy: num(e.g, 20), w: num(e.g, 40), h: num(e.g, 41), vx: num(e.g, 12), vy: num(e.g, 22), vh: num(e.g, 45), giro: num(e.g, 51), congeladas: e.g.filter(([k]) => k === 331).map(([, v]) => capaH[v.trim()]).filter(Boolean) });
+          continue;
+        } else if (e.tipo === 'HATCH') {
+          // contornos de tipo polilínea o de líneas; se rellena si es sólido
+          const caminos = []; const g = e.g;
+          const solido = /^SOLID$/i.test(val(g, 2, '').trim());
+          let k = g.findIndex(([c]) => c === 91);
+          const nb = k >= 0 ? +g[k][1] : 0; k++;
+          for (let b = 0; b < nb && k < g.length; b++) {
+            while (k < g.length && g[k][0] !== 92) k++;
+            if (k >= g.length) break;
+            const tipo = +g[k][1]; k++;
+            const cm = [];
+            if (tipo & 2) { // contorno polilínea: 72 con bulge, 73 cerrado, 93 n, vértices 10/20[/42]
+              const conB = +g[k][1]; k += 2; const n = +g[k][1]; k++;
+              const vs = [];
+              for (let q = 0; q < n; q++) { const v = [+g[k][1], +g[k + 1][1], 0]; k += 2; if (conB && g[k] && g[k][0] === 42) { v[2] = +g[k][1]; k++; } vs.push(v); }
+              for (let q = 0; q < vs.length; q++) cm.push(...seg(vs[q], vs[(q + 1) % vs.length]).slice(q ? 1 : 0));
+            } else { // tramos: 93 n, cada uno 72 tipo (1 recta, 2 arco)
+              const n = +g[k][1]; k++;
+              for (let q = 0; q < n && k < g.length; q++) {
+                const t = +g[k][1]; k++;
+                if (t === 1) { cm.push([+g[k][1], +g[k + 1][1]], [+g[k + 2][1], +g[k + 3][1]]); k += 4; }
+                else if (t === 2) { const cx = +g[k][1], cy = +g[k + 1][1], r = +g[k + 2][1], a0 = +g[k + 3][1], a1 = +g[k + 4][1], ccw = +g[k + 5][1]; k += 6; const ar = ccw ? arco(cx, cy, r, a0, a1) : arco(cx, cy, r, -a0, -a1).map(([x, y]) => [x, 2 * cy - y]); cm.push(...ar); }
+                else break;
+              }
+            }
+            caminos.push(cm);
+          }
+          if (caminos.length) rellenos.push({ ...base, solido, caminos: caminos.filter(c => c.length > 2).map(c => c.map(p => T(m, p))) });
+          continue;
+        } else if (e.tipo === 'ATTRIB' && (num(e.g, 70) & 1)) continue;
+        else if (e.tipo === 'TEXT' || e.tipo === 'MTEXT' || e.tipo === 'ATTRIB') {
           let t = e.g.filter(([k]) => k === 3 || k === 1).map(([, v]) => v).join('');
+          if (utf8) try { t = decodeURIComponent(escape(t)); } catch (er) {}
           t = t.replace(/\\[A-Za-z][^;\\]*;/g, '').replace(/\\P/g, ' ').replace(/[{}]/g, '').replace(/%%[cC]/g, 'Ø').replace(/%%[dD]/g, '°').replace(/%%[pP]/g, '±');
-          const al = e.tipo === 'TEXT' && (num(e.g, 72) || num(e.g, 73)) ? [num(e.g, 11), num(e.g, 21)] : [num(e.g, 10), num(e.g, 20)];
-          const ah = e.tipo === 'TEXT' ? ['start', 'middle', 'end', 'middle', 'middle', 'start'][num(e.g, 72)] || 'start' : ['start', 'start', 'middle', 'end'][((num(e.g, 71, 1) - 1) % 3) + 1] || 'start';
+          const tx = e.tipo !== 'MTEXT';
+          const al = tx && (num(e.g, 72) || num(e.g, 73) || num(e.g, 74)) ? [num(e.g, 11), num(e.g, 21)] : [num(e.g, 10), num(e.g, 20)];
+          const ah = tx ? ['start', 'middle', 'end', 'middle', 'middle', 'start'][num(e.g, 72)] || 'start' : ['start', 'start', 'middle', 'end'][((num(e.g, 71, 1) - 1) % 3) + 1] || 'start';
           const p = T(m, al), esc = Math.hypot(m.a, m.b);
-          const rot = (e.tipo === 'TEXT' ? num(e.g, 50) : Math.atan2(num(e.g, 21), num(e.g, 11, 1)) * 180 / Math.PI) + Math.atan2(m.b, m.a) * 180 / Math.PI;
+          const rot = (tx ? num(e.g, 50) : Math.atan2(num(e.g, 21), num(e.g, 11, 1)) * 180 / Math.PI) + Math.atan2(m.b, m.a) * 180 / Math.PI;
           if (t.trim()) textos.push({ ...base, x: p[0], y: p[1], alto: num(e.g, 40, 1) * esc, rot, texto: t, ancla: ah });
           continue;
         } else if ((e.tipo === 'INSERT' || e.tipo === 'DIMENSION') && prof < 4) {
@@ -2220,14 +2282,18 @@ const Editor = (() => {
           const r = (e.tipo === 'INSERT' ? num(e.g, 50) : 0) * Math.PI / 180;
           const ix = e.tipo === 'INSERT' ? num(e.g, 10) : 0, iy = e.tipo === 'INSERT' ? num(e.g, 20) : 0;
           const n = { a: Math.cos(r) * sx, b: Math.sin(r) * sx, c: -Math.sin(r) * sy, d: Math.cos(r) * sy, e: ix, f: iy };
-          emitir(def, componer(m, n), capa, color, prof + 1, prof === 0 ? { bloque: val(e.g, 2, '').trim(), hBloque: base.h } : extra);
+          emitir(def, componer(m, n), capa, color, prof + 1, prof === 0 ? { bloque: val(e.g, 2, '').trim(), hBloque: base.h } : extra, dest);
           continue;
         } else continue;
         if (pts.length > 1) trazos.push({ ...base, pts: pts.map(p => T(m, p)) });
       }
     }
-    emitir(plano, I, null, null, 0, {});
-    return { trazos, textos, capas };
+    emitir(plano.filter(e => num(e.g, 67) !== 1), I, null, null, 0, {}, modelo);
+    emitir(plano.filter(e => num(e.g, 67) === 1), I, null, null, 0, {}, papel);
+    // nombre del layout activo (*Paper_Space)
+    const hPs = Object.keys(brec).find(h => /^\*paper_space$/i.test(brec[h]));
+    papel.nombre = (hPs && layouts[hPs]?.nombre) || Object.values(layouts).filter(l => !/^model$/i.test(l.nombre)).sort((a, b) => a.orden - b.orden)[0]?.nombre || 'Layout';
+    return { ...modelo, papel, capas };
   }
 
   // segmento (con bulge) aplanado
@@ -2721,10 +2787,20 @@ const TIPOS_FORM = [
   ['9','09 · Mercados / supermercados'], ['10','10 · Hoteles / geriátricos'], ['13','13'], ['14','14 · Industria / fábrica / taller'],
   ['15','15 · Depósitos'], ['16','16 · Hospital / sanatorio / clínica'], ['17','17 · Consultorio / laboratorio'], ['18','18 · Estación de servicio'],
 ];
-const ACI_ED = {1:'#d62828',2:'#c99a00',3:'#2a9d5c',4:'#1fa5b8',5:'#2f5fd0',6:'#b0379b',7:'var(--ink)',8:'#8a96a3',9:'#b9c2cb',30:'#e07b1f',52:'#8a5a2b',104:'#7b3fa0',150:'#4aa3df',200:'#888',220:'#888',32:'#999',204:'#2f5fd0'};
+const ACI_ED = {1:'#d62828',2:'#c99a00',3:'#2a9d5c',4:'#1fa5b8',5:'#2f5fd0',6:'#b0379b',7:'#1b2733',8:'#8a96a3',9:'#b9c2cb',30:'#e07b1f',52:'#8a5a2b',104:'#7b3fa0',150:'#4aa3df',200:'#888',220:'#888',32:'#999',204:'#2f5fd0'};
 const colorAci = c => ACI_ED[c] || '#7d8a96';
 const RE_PLANTA_CAPA = /-(PB|\d{2}[PSE])-/i;
 const aBytes = txt => Uint8Array.from(txt, ch => ch.charCodeAt(0) & 255);
+// grupos de capas que se pueden apagar en el visor (las superficies siempre se ven)
+const GRUPOS_CAPA = [
+  ['muros', 'Muros separativos'], ['mensura', 'Mensura y parcela'], ['textos', 'Textos'], ['otras', 'Otras capas'],
+];
+function grupoCapa(capa){
+  if (/-SUP$/i.test(capa)) return 'sup';
+  if (/MURO/i.test(capa)) return 'muros';
+  if (/PARCELA|MANZANA|TITULO|CESION|SERVIDUMBRE|EXCEDENTE|MENSURA|PUERTA|^\d{2}-M-/i.test(capa)) return 'mensura';
+  return 'otras';
+}
 
 function edCargar(txt){
   const ed = state.ed;
@@ -2737,11 +2813,13 @@ function edCargar(txt){
   for (const h of [...ed.decl.keys()]) if (!ed.sup.some(p => p.h === h)) ed.decl.delete(h);
 }
 function edIniciar(){
-  state.ed = { txt:null, decl:new Map(), undo:[], herr:'sel', sel:null, camino:[], A:null, view:null, planta:null, tipoDef:'', nformDef:'1', msg:'' };
+  state.ed = { txt:null, decl:new Map(), undo:[], herr:'sel', sel:null, camino:[], A:null, views:{}, vista:'modelo', planta:null, tipoDef:'', nformDef:'1',
+               capasOn:{ muros:false, mensura:true, textos:true, otras:true }, obra:null, calcar:null };
   edCargar(state.dxfTxt);
 }
 const edPolys = () => state.ed.sup.filter(p => p.planta === state.ed.planta);
 const esConstr = p => Bloques.EMPADRONADO.has(p.color);
+const edView = () => state.ed.views[state.ed.vista];
 
 function vistaEditor(box, E){
   if (!state.ed || state.ed.base !== state.dxfTxt){ edIniciar(); state.ed.base = state.dxfTxt; }
@@ -2750,15 +2828,25 @@ function vistaEditor(box, E){
   if (!box.querySelector('#edSvg')){
     box.innerHTML = `
       <p>Lo relevado supera a lo empadronado: corresponde declarar un <b>alta de ${f(E.m2)} m²</b>. Si el sector nuevo está dentro de un polígono más grande, usá <b>Dividir polígono</b> para separarlo; después seleccioná cada polígono nuevo y marcalo como <b>superficie a declarar</b>. Al descargar, esos polígonos llevan el bloque <b>form</b> y el resto <b>form_empadronado</b> o <b>form_descubierto</b>.</p>
-      <div class="ed">
+      <div class="ed" id="edWrap">
         <div class="ed-bar">
-          <div class="ed-tabs" id="edTabs" role="tablist"></div>
+          <div class="ed-grp">
+            <div class="ed-pages" role="tablist" aria-label="Vista">
+              <button type="button" role="tab" class="pg" data-v="modelo">Plano</button>
+              <button type="button" role="tab" class="pg" data-v="papel" id="edPgPapel">Ficha parcelaria</button>
+            </div>
+            <div class="ed-tabs" id="edTabs" role="tablist" aria-label="Planta"></div>
+          </div>
           <div class="ed-tools">
             <button type="button" class="tb" id="edSel" aria-pressed="true">Seleccionar</button>
             <button type="button" class="tb" id="edDiv" aria-pressed="false">Dividir polígono</button>
             <button type="button" class="tb" id="edUndo">Deshacer</button>
             <button type="button" class="tb" id="edFit">Ajustar vista</button>
           </div>
+        </div>
+        <div class="ed-bar ed-bar2" id="edBar2">
+          <div class="ed-capas" id="edCapas"></div>
+          <div class="ed-obra" id="edObra"></div>
         </div>
         <div class="ed-main">
           <div class="ed-view"><svg id="edSvg" tabindex="0" aria-label="Plano editable de la planta"></svg><div class="ed-hint" id="edHint"></div></div>
@@ -2768,78 +2856,230 @@ function vistaEditor(box, E){
     $('edSel').onclick = () => edHerr('sel');
     $('edDiv').onclick = () => edHerr('div');
     $('edUndo').onclick = edDeshacer;
-    $('edFit').onclick = () => { ed.view = null; edDibujar(); };
+    $('edFit').onclick = () => { ed.views[ed.vista] = null; edDibujar(); };
+    box.querySelectorAll('.ed-pages .pg').forEach(b => b.onclick = () => edVista(b.dataset.v));
     edEventos($('edSvg'));
+    window.addEventListener('resize', edAncho);
   }
-  edTabs(); edDibujar(); edLateral();
+  edAncho(); edVista(ed.vista, true); edLateral();
+}
+// el visor ocupa todo el ancho disponible, desde la barra lateral hasta el borde de la ventana
+function edAncho(){
+  const el = $('edWrap'); if (!el) return;
+  el.style.width = ''; el.style.marginLeft = '';
+  const side = document.querySelector('.app > .side');
+  const sr = side ? side.getBoundingClientRect() : null;
+  const izq = sr && sr.width > 0 && sr.height > 300 && sr.right < innerWidth / 2 ? sr.right : 0;
+  const der = document.documentElement.clientWidth;
+  const nat = el.getBoundingClientRect();
+  el.style.width = (der - izq) + 'px';
+  el.style.marginLeft = (izq - nat.left) + 'px';
+  edDibujar();
+}
+function edVista(v, inicial){
+  const ed = state.ed; ed.vista = v;
+  $('edPgPapel').textContent = 'Ficha parcelaria' + (ed.dxf.layouts?.[0] ? ' · ' + ed.dxf.layouts[0] : '');
+  document.querySelectorAll('#edWrap .ed-pages .pg').forEach(b => b.setAttribute('aria-selected', b.dataset.v === v));
+  const modelo = v === 'modelo';
+  $('edTabs').hidden = !modelo; $('edBar2').hidden = !modelo;
+  $('edSel').hidden = $('edDiv').hidden = $('edUndo').hidden = !modelo;
+  if (!modelo) { ed.herr = 'sel'; edCancelar(); ed.calcar = null; }
+  edTabs(); edCapas(); edObra(); edHint(); edDibujar();
 }
 function edTabs(){
   const ed = state.ed;
   $('edTabs').innerHTML = ed.plantas.map(p => `<button type="button" role="tab" class="tab" aria-selected="${p === ed.planta}" data-p="${p}">${Engine.NOMBRE_PLANTA(p)}</button>`).join('');
-  $('edTabs').querySelectorAll('button').forEach(b => b.onclick = () => { ed.planta = b.dataset.p; ed.sel = null; edCancelar(); ed.view = null; edTabs(); edDibujar(); edLateral(); });
+  $('edTabs').querySelectorAll('button').forEach(b => b.onclick = () => { ed.planta = b.dataset.p; ed.sel = null; edCancelar(); edTabs(); edDibujar(); edLateral(); });
+}
+function edCapas(){
+  const ed = state.ed;
+  $('edCapas').innerHTML = '<span class="ed-lab">Capas</span>' + GRUPOS_CAPA.map(([k, t]) => `<label class="ed-sw"><input type="checkbox" data-k="${k}" ${ed.capasOn[k] ? 'checked' : ''}> ${t}</label>`).join('');
+  $('edCapas').querySelectorAll('input').forEach(i => i.onchange = () => { ed.capasOn[i.dataset.k] = i.checked; edDibujar(); });
 }
 function edHerr(h){
-  const ed = state.ed; ed.herr = h; edCancelar();
+  const ed = state.ed; ed.herr = h; edCancelar(); ed.calcar = null;
   $('edSel').setAttribute('aria-pressed', h === 'sel'); $('edDiv').setAttribute('aria-pressed', h === 'div');
-  edHint(); edDibujar();
+  edObra(); edHint(); edDibujar();
 }
 function edCancelar(){ const ed = state.ed; ed.camino = []; ed.A = null; ed.snap = null; }
 function edHint(t){
   const ed = state.ed;
-  $('edHint').textContent = t || (ed.herr === 'div'
+  if (t) { $('edHint').textContent = t; return; }
+  if (ed.vista === 'papel') { $('edHint').textContent = 'Ficha parcelaria tal como está en el layout del DXF (solo lectura). Rueda: zoom · arrastrar: desplazar.'; return; }
+  if (ed.calcar) { $('edHint').textContent = ['1/4 · Hacé clic en un punto reconocible del plano de obra (por ejemplo, una esquina de la parcela).', '2/4 · Ahora hacé clic en ese mismo punto en el dibujo (se engancha a los vértices).', '3/4 · Hacé clic en un segundo punto del plano de obra, lo más lejos posible del primero.', '4/4 · Hacé clic en ese mismo punto en el dibujo.'][ed.calcar.paso]; return; }
+  $('edHint').textContent = ed.herr === 'div'
     ? (ed.A ? 'Marcá puntos intermedios o terminá el corte sobre el borde del mismo polígono. Esc cancela.' : 'Hacé clic sobre el borde del polígono donde empieza el corte. Se engancha a vértices, puntos medios, prolongaciones e intersecciones.')
-    : 'Hacé clic en un polígono para ver sus datos y marcarlo. Rueda: zoom · arrastrar: desplazar.');
+    : 'Hacé clic en un polígono para ver sus datos y marcarlo. Rueda: zoom · arrastrar: desplazar.';
+}
+
+/* --- plano de obra de fondo --- */
+function edObra(){
+  const ed = state.ed, o = ed.obra, box = $('edObra');
+  if (!o) {
+    box.innerHTML = `<span class="ed-lab">Plano de obra</span><label class="tb tb-file">Subir plano de obra (PDF o imagen)<input type="file" id="edObraF" accept=".pdf,image/png,image/jpeg" hidden></label>`;
+    $('edObraF').onchange = e => e.target.files[0] && edObraCargar(e.target.files[0]);
+    return;
+  }
+  box.innerHTML = `<span class="ed-lab">Plano de obra</span>
+    <label class="ed-sw"><input type="checkbox" id="edObraVis" ${o.vis ? 'checked' : ''}> Ver</label>
+    <label class="ed-sw">Opacidad <input type="range" id="edObraOp" min="0.1" max="1" step="0.05" value="${o.op}"></label>
+    ${o.npag > 1 ? `<label class="ed-sw">Hoja <select id="edObraPag">${Array.from({length:o.npag}, (_, i) => `<option value="${i + 1}" ${o.pag === i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></label>` : ''}
+    <button type="button" class="tb" id="edCalcar" aria-pressed="${!!ed.calcar}">Calcar con 2 puntos</button>
+    <button type="button" class="tb" id="edObraX">Quitar</button>`;
+  $('edObraVis').onchange = e => { o.vis = e.target.checked; edDibujar(); };
+  $('edObraOp').oninput = e => { o.op = +e.target.value; edDibujar(); };
+  if ($('edObraPag')) $('edObraPag').onchange = e => edObraPagina(+e.target.value);
+  $('edCalcar').onclick = () => { if (ed.calcar) { ed.calcar = null; } else { edHerr('sel'); ed.calcar = { paso: 0, pts: [] }; o.vis = true; } edObra(); edHint(); edDibujar(); };
+  $('edObraX').onclick = () => { if (o.url) URL.revokeObjectURL(o.url); ed.obra = null; ed.calcar = null; edObra(); edHint(); edDibujar(); };
+}
+async function edObraCargar(file){
+  const ed = state.ed;
+  try {
+    edHint('Cargando el plano de obra…');
+    if (/pdf$/i.test(file.type) || /\.pdf$/i.test(file.name)) {
+      if (!window.pdfjsLib) throw new Error('no se pudo cargar el lector de PDF');
+      const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+      ed.obra = { pdf, npag: pdf.numPages, pag: 1, op: .5, vis: true };
+      await edObraPagina(1, true);
+    } else {
+      const url = URL.createObjectURL(file);
+      const img = await new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => mal(new Error('no se pudo leer la imagen')); i.src = url; });
+      ed.obra = { url, w: img.naturalWidth, h: img.naturalHeight, op: .5, vis: true, npag: 1, pag: 1 };
+      edObraUbicar();
+    }
+    edObra(); edHint('Plano de obra cargado. Usá «Calcar con 2 puntos» para superponerlo exactamente sobre el dibujo.'); edDibujar();
+    evento('editor-obra', 'Editor: plano de obra cargado');
+  } catch(e){ edHint('No se pudo cargar el plano de obra: ' + (e.message || e)); console.error(e); }
+}
+async function edObraPagina(n, primera){
+  const ed = state.ed, o = ed.obra;
+  const page = await o.pdf.getPage(n);
+  const v0 = page.getViewport({ scale: 1 });
+  const k = Math.min(4, 3200 / Math.max(v0.width, v0.height));
+  const vp = page.getViewport({ scale: k });
+  const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+  const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+  await page.render({ canvasContext: cx, viewport: vp }).promise;
+  const blob = await new Promise(ok => cv.toBlob(ok, 'image/png'));
+  if (o.url) URL.revokeObjectURL(o.url);
+  const cambiaTam = o.w && (o.w !== cv.width || o.h !== cv.height);
+  o.url = URL.createObjectURL(blob); o.w = cv.width; o.h = cv.height; o.pag = n;
+  if (primera || !o.M || cambiaTam) edObraUbicar();
+  edDibujar();
+}
+// ubicación inicial: la imagen ocupa la vista actual (después se calca con 2 puntos)
+function edObraUbicar(){
+  const ed = state.ed, o = ed.obra, v = ed.views.modelo, r = $('edSvg').getBoundingClientRect();
+  const anchoW = r.width / v.s * 0.9, k = anchoW / o.w;
+  // mundo = M · [u, v, 1]   (v de la imagen crece hacia abajo)
+  o.M = { a: k, b: 0, c: 0, d: -k, e: v.cx - anchoW / 2, f: v.cy + o.h * k / 2 };
+}
+function edCalcarClic(w){
+  const ed = state.ed, c = ed.calcar;
+  c.pts.push(c.paso % 2 ? (ed.snap && ed.snap.tipo ? ed.snap.p : w) : w);
+  c.paso++;
+  if (c.paso === 4) {
+    const [p1, t1, p2, t2] = c.pts;
+    const dp = [p2[0] - p1[0], p2[1] - p1[1]], dt = [t2[0] - t1[0], t2[1] - t1[1]];
+    const den = dp[0] * dp[0] + dp[1] * dp[1];
+    if (den < 1e-9) { ed.calcar = { paso: 0, pts: [] }; edHint('Los dos puntos del plano de obra son el mismo. Empezá de nuevo.'); return; }
+    // semejanza z' = α z + β (rotación, escala y traslación)
+    const ar = (dt[0] * dp[0] + dt[1] * dp[1]) / den, ai = (dt[1] * dp[0] - dt[0] * dp[1]) / den;
+    const bx = t1[0] - (ar * p1[0] - ai * p1[1]), by = t1[1] - (ai * p1[0] + ar * p1[1]);
+    const M = ed.obra.M;
+    ed.obra.M = { a: ar * M.a - ai * M.b, b: ai * M.a + ar * M.b, c: ar * M.c - ai * M.d, d: ai * M.c + ar * M.d, e: ar * M.e - ai * M.f + bx, f: ai * M.e + ar * M.f + by };
+    ed.calcar = null; edObra();
+    edHint(`Plano de obra calcado (escala ×${Math.hypot(ar, ai).toFixed(3)}). Si no coincide bien, repetí con puntos más alejados.`);
+  } else edHint();
+  edDibujar();
+}
+
+/* --- sugerencias a partir del certificado --- */
+function edSugerencias(){
+  const ed = state.ed;
+  const cand = ed.sup.filter(esConstr).sort((a, b) => b.area - a.area).slice(0, 18);
+  const ts = Engine.tsTitulo5(ed.agip + ed.alta), k = ts / 100;
+  // lo declarado D cierra si |relevado − (AGIP + D)| ≤ TS·(AGIP + D)
+  const dMin = (ed.constr - ed.agip * (1 + k)) / (1 + k), dMax = (ed.constr - ed.agip * (1 - k)) / (1 - k);
+  const combos = [];
+  const n = cand.length;
+  const rec = (ini, sel, sum) => {
+    if (sel.length && sum >= dMin - 1e-6 && sum <= dMax + 1e-6) combos.push({ sel: sel.slice(), sum });
+    if (sel.length === 3) return;
+    for (let i = ini; i < n; i++) { sel.push(cand[i]); rec(i + 1, sel, sum + cand[i].area); sel.pop(); }
+  };
+  rec(0, [], 0);
+  combos.sort((a, b) => Math.abs(a.sum - ed.alta) - Math.abs(b.sum - ed.alta) || a.sel.length - b.sel.length);
+  const contener = cand.filter(p => p.area > dMax).sort((a, b) => a.area - b.area).slice(0, 2);
+  return { dMin: Math.max(dMin, 0), dMax, ts, combos: combos.slice(0, 3), contener };
 }
 
 /* --- vista y coordenadas --- */
 function edAjustar(){
   const ed = state.ed, svg = $('edSvg'), r = svg.getBoundingClientRect();
-  const pts = edPolys().flatMap(p => p.dib);
-  const par = ed.dxf.parcela.flatMap(p => p.dib);
-  const todos = pts.length ? pts.concat(par) : par;
-  if (!todos.length) { ed.view = { cx:0, cy:0, s:1 }; return; }
+  let todos;
+  if (ed.vista === 'papel') {
+    const P = ed.geo.papel;
+    todos = P.trazos.flatMap(t => t.pts).concat(P.vports.flatMap(v => [[v.cx - v.w / 2, v.cy - v.h / 2], [v.cx + v.w / 2, v.cy + v.h / 2]]));
+  } else {
+    const pts = edPolys().flatMap(p => p.dib), par = ed.dxf.parcela.flatMap(p => p.dib);
+    todos = pts.length ? pts.concat(par) : par;
+  }
+  if (!todos.length) { ed.views[ed.vista] = { cx:0, cy:0, s:1 }; return; }
   const xs = todos.map(p => p[0]), ys = todos.map(p => p[1]);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-  const s = Math.min((r.width - 40) / Math.max(x1 - x0, 1e-3), (r.height - 40) / Math.max(y1 - y0, 1e-3));
-  ed.view = { cx:(x0 + x1) / 2, cy:(y0 + y1) / 2, s };
+  const s = Math.min((r.width - 48) / Math.max(x1 - x0, 1e-6), (r.height - 110) / Math.max(y1 - y0, 1e-6));
+  ed.views[ed.vista] = { cx:(x0 + x1) / 2, cy:(y0 + y1) / 2 - 30 / s, s };
+  return;
+  ed.views[ed.vista] = { cx:(x0 + x1) / 2, cy:(y0 + y1) / 2, s };
 }
 function edMundo(ev){ // pantalla → dibujo
-  const ed = state.ed, r = $('edSvg').getBoundingClientRect();
-  return [ed.view.cx + (ev.clientX - r.left - r.width / 2) / ed.view.s, ed.view.cy - (ev.clientY - r.top - r.height / 2) / ed.view.s];
+  const v = edView(), r = $('edSvg').getBoundingClientRect();
+  return [v.cx + (ev.clientX - r.left - r.width / 2) / v.s, v.cy - (ev.clientY - r.top - r.height / 2) / v.s];
 }
 
 /* --- dibujo --- */
 function edDibujar(){
   const ed = state.ed, svg = $('edSvg');
-  if (!svg) return;
+  if (!svg || !ed) return;
   const r = svg.getBoundingClientRect();
-  if (!ed.view) edAjustar();
-  const v = ed.view, W = r.width, H = r.height;
+  if (!r.width) return;
+  if (!edView()) edAjustar();
+  const v = edView(), W = r.width, H = r.height;
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   const X = x => ((x - v.cx) * v.s + W / 2).toFixed(1), Y = y => (-(y - v.cy) * v.s + H / 2).toFixed(1);
   const path = pts => 'M' + pts.map(p => X(p[0]) + ' ' + Y(p[1])).join('L');
-  const visible = capa => { const m = capa.match(RE_PLANTA_CAPA); return !m || m[1].toUpperCase() === ed.planta; };
+  svg.classList.toggle('papel', ed.vista === 'papel');
+  if (ed.vista === 'papel') { svg.innerHTML = edPapel(X, Y, path, v); return; }
+  const visible = capa => { const m = capa.match(RE_PLANTA_CAPA); if (m && m[1].toUpperCase() !== ed.planta) return false; const g = grupoCapa(capa); return g === 'sup' || ed.capasOn[g]; };
   let out = '';
-  // fondo: todo lo que no es polígono de superficie
+  // plano de obra (al fondo)
+  const o = ed.obra;
+  if (o && o.vis && o.url && o.M) {
+    const M = o.M, s = v.s;
+    const A = s * M.a, B = -s * M.b, C = s * M.c, D = -s * M.d, E = s * (M.e - v.cx) + W / 2, F = -s * (M.f - v.cy) + H / 2;
+    out += `<image href="${o.url}" width="${o.w}" height="${o.h}" opacity="${o.op}" preserveAspectRatio="none" transform="matrix(${A} ${B} ${C} ${D} ${E} ${F})" pointer-events="none"/>`;
+  }
+  // fondo: lo que no es polígono de superficie, en gris para que predominen las superficies
   const supH = new Set(ed.sup.map(p => p.h));
   for (const t of ed.geo.trazos) {
     if (!visible(t.capa) || (supH.has(t.h) && !t.bloque)) continue;
-    out += `<path d="${path(t.pts)}" fill="none" stroke="${colorAci(t.color)}" stroke-width="${t.bloque ? .8 : 1}" opacity="${t.bloque ? .9 : .75}"/>`;
+    const g = grupoCapa(t.capa);
+    out += `<path d="${path(t.pts)}" fill="none" stroke="${g === 'sup' ? colorAci(t.color) : g === 'mensura' ? '#5f6f7e' : '#9aa6b2'}" stroke-width="${g === 'mensura' ? 1.1 : .8}" opacity="${g === 'sup' ? .9 : .7}"/>`;
   }
-  for (const t of ed.geo.textos) {
+  if (ed.capasOn.textos) for (const t of ed.geo.textos) {
     if (!visible(t.capa)) continue;
     const fs = t.alto * v.s; if (fs < 4) continue;
-    out += `<text x="${X(t.x)}" y="${Y(t.y)}" font-size="${fs.toFixed(1)}" text-anchor="${t.ancla}" transform="rotate(${(-t.rot).toFixed(2)} ${X(t.x)} ${Y(t.y)})" fill="${colorAci(t.color)}" opacity=".85">${esc(t.texto)}</text>`;
+    out += `<text x="${X(t.x)}" y="${Y(t.y)}" font-size="${fs.toFixed(1)}" text-anchor="${t.ancla}" transform="rotate(${(-t.rot).toFixed(2)} ${X(t.x)} ${Y(t.y)})" fill="${grupoCapa(t.capa) === 'sup' ? colorAci(t.color) : '#6b7a88'}">${esc(t.texto)}</text>`;
   }
   // polígonos de superficie de la planta
   const pol = edPolys().slice().sort((a, b) => b.area - a.area);
   for (const p of pol) {
     const c = SW[Engine.COLORES[p.color]?.col] || '#999';
     const dec = ed.decl.has(p.h), sel = ed.sel === p.h;
-    out += `<path class="ed-pol" data-h="${p.h}" d="${path(p.dib)}Z" fill="${dec ? 'url(#edRay)' : c}" fill-opacity="${dec ? 1 : .22}" stroke="${sel ? 'var(--ink)' : c}" stroke-width="${sel ? 2.6 : 1.4}"/>`;
-    if (dec) out += `<path d="${path(p.dib)}Z" fill="none" stroke="var(--bad)" stroke-width="${sel ? 2.6 : 1.8}" pointer-events="none"/>`;
+    out += `<path class="ed-pol" data-h="${p.h}" d="${path(p.dib)}Z" fill="${dec ? 'url(#edRay)' : c}" fill-opacity="${dec ? 1 : o && o.vis ? .18 : .3}" stroke="${sel ? 'var(--ink)' : c}" stroke-width="${sel ? 3 : 1.8}"/>`;
+    if (dec) out += `<path d="${path(p.dib)}Z" fill="none" stroke="var(--bad)" stroke-width="${sel ? 3 : 2.2}" pointer-events="none"/>`;
   }
-  // etiquetas de superficie
   for (const p of pol) {
     const c = Bloques.centro(p.dib); if (p.area * v.s * v.s < 900) continue;
     out += `<text x="${X(c.x)}" y="${Y(c.y)}" class="ed-lbl" text-anchor="middle" dominant-baseline="middle" pointer-events="none">${f(p.area)} m²${ed.decl.has(p.h) ? ' · alta' : ''}</text>`;
@@ -2850,18 +3090,54 @@ function edDibujar(){
     out += `<path d="${path(cam)}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="6 4" pointer-events="none"/>`;
     cam.forEach(p => out += `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="3" fill="var(--accent)" pointer-events="none"/>`);
   }
-  if (ed.herr === 'div' && ed.snap) {
+  // puntos del calco
+  if (ed.calcar) ed.calcar.pts.forEach((p, i) => out += `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="5" fill="none" stroke="${i % 2 ? 'var(--accent)' : 'var(--bad)'}" stroke-width="2" pointer-events="none"/><text x="${+X(p[0]) + 8}" y="${+Y(p[1]) - 8}" class="ed-snap" pointer-events="none">${i % 2 ? 'D' : 'P'}${Math.floor(i / 2) + 1}</text>`);
+  if ((ed.herr === 'div' || (ed.calcar && ed.calcar.paso % 2)) && ed.snap && ed.snap.tipo) {
     const s = ed.snap, x = X(s.p[0]), y = Y(s.p[1]);
     if (s.ray) out += `<path d="${path(s.ray)}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2 4" pointer-events="none"/>`;
     out += `<rect x="${x - 6}" y="${y - 6}" width="12" height="12" fill="none" stroke="var(--accent)" stroke-width="2" pointer-events="none"/><text x="${+x + 10}" y="${+y - 10}" class="ed-snap" pointer-events="none">${s.tipo}</text>`;
   }
-  svg.innerHTML = `<defs><pattern id="edRay" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="var(--bad)" fill-opacity=".14"/><line x1="0" y1="0" x2="0" y2="8" stroke="var(--bad)" stroke-width="2" stroke-opacity=".45"/></pattern></defs>` + out;
+  svg.innerHTML = `<defs><pattern id="edRay" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="var(--bad)" fill-opacity=".16"/><line x1="0" y1="0" x2="0" y2="8" stroke="var(--bad)" stroke-width="2" stroke-opacity=".5"/></pattern></defs>` + out;
+}
+// Ficha parcelaria: el layout del DXF con sus ventanas al espacio modelo
+function edPapel(X, Y, path, v){
+  const ed = state.ed, P = ed.geo.papel;
+  const ptsH = c => c.map((cm, i) => path(cm) + 'Z').join(' ');
+  let out = '';
+  // hoja
+  const todos = P.trazos.flatMap(t => t.pts).concat(P.vports.flatMap(q => [[q.cx - q.w / 2, q.cy - q.h / 2], [q.cx + q.w / 2, q.cy + q.h / 2]]));
+  if (todos.length) {
+    const xs = todos.map(p => p[0]), ys = todos.map(p => p[1]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    out += `<rect x="${X(x0)}" y="${Y(y1)}" width="${((x1 - x0) * v.s).toFixed(1)}" height="${((y1 - y0) * v.s).toFixed(1)}" fill="#fff" stroke="#c5ced6" filter="url(#edSombra)"/>`;
+  }
+  // ventanas: contenido del espacio modelo recortado y a escala
+  P.vports.forEach((q, i) => {
+    const k = q.h / q.vh, cg = new Set(q.congeladas.map(c => c.toUpperCase())), giro = q.giro * Math.PI / 180;
+    const M = p => { const dx = p[0] - q.vx, dy = p[1] - q.vy, x = dx * Math.cos(-giro) - dy * Math.sin(-giro), y = dx * Math.sin(-giro) + dy * Math.cos(-giro); return [q.cx + x * k, q.cy + y * k]; };
+    let g = '';
+    for (const t of ed.geo.trazos) if (!cg.has(t.capa)) g += `<path d="${path(t.pts.map(M))}" fill="none" stroke="${colorAci(t.color)}" stroke-width=".8"/>`;
+    for (const t of ed.geo.textos) {
+      if (cg.has(t.capa)) continue;
+      const p = M([t.x, t.y]), fs = t.alto * k * v.s; if (fs < 2) continue;
+      g += `<text x="${X(p[0])}" y="${Y(p[1])}" font-size="${fs.toFixed(1)}" text-anchor="${t.ancla}" transform="rotate(${(-(t.rot - q.giro)).toFixed(2)} ${X(p[0])} ${Y(p[1])})" fill="${colorAci(t.color)}">${esc(t.texto)}</text>`;
+    }
+    const x0 = q.cx - q.w / 2, y1 = q.cy + q.h / 2;
+    out += `<clipPath id="edVp${i}"><rect x="${X(x0)}" y="${Y(y1)}" width="${(q.w * v.s).toFixed(1)}" height="${(q.h * v.s).toFixed(1)}"/></clipPath><g clip-path="url(#edVp${i})">${g}</g>`;
+  });
+  for (const rl of P.rellenos) out += `<path d="${ptsH(rl.caminos)}" fill="${colorAci(rl.color)}" fill-opacity="${rl.solido ? 1 : .25}" fill-rule="evenodd" stroke="none"/>`;
+  for (const t of P.trazos) out += `<path d="${path(t.pts)}" fill="none" stroke="${colorAci(t.color)}" stroke-width=".9"/>`;
+  for (const t of P.textos) {
+    const fs = t.alto * v.s; if (fs < 2) continue;
+    out += `<text x="${X(t.x)}" y="${Y(t.y)}" font-size="${fs.toFixed(1)}" text-anchor="${t.ancla}" transform="rotate(${(-t.rot).toFixed(2)} ${X(t.x)} ${Y(t.y)})" fill="${colorAci(t.color)}">${esc(t.texto)}</text>`;
+  }
+  return `<defs><filter id="edSombra" x="-5%" y="-5%" width="110%" height="110%"><feDropShadow dx="0" dy="1" stdDeviation="3" flood-opacity=".18"/></filter></defs>` + out;
 }
 
 /* --- enganches (osnap) --- */
-function edEnganche(w, tolPx = 12){
-  const ed = state.ed, tol = tolPx / ed.view.s;
-  const pols = edPolys();
+function edEnganche(w, tolPx = 12, conMensura = false){
+  const ed = state.ed, tol = tolPx / edView().s;
+  const pols = conMensura ? edPolys().concat(ed.dxf.parcela, ed.dxf.titulo).filter(p => p.pts) : edPolys();
   let mejor = null;
   const prop = (p, tipo, prio, extra = {}) => { const d = Math.hypot(p[0] - w[0], p[1] - w[1]); if (d <= tol && (!mejor || prio < mejor.prio || (prio === mejor.prio && d < mejor.d))) mejor = { p, tipo, prio, d, ...extra }; };
   for (const pl of pols) {
@@ -2870,7 +3146,7 @@ function edEnganche(w, tolPx = 12){
     for (let i = 0; i < vs.length; i++) if (!vs[i][2]) prop(Editor.puntoEnTramo(vs, i, .5), 'Punto medio', 2);
   }
   // con un punto ya marcado: prolongación de los lados que llegan a ese punto, perpendicular, e intersecciones
-  const P = ed.camino[ed.camino.length - 1];
+  const P = ed.herr === 'div' ? ed.camino[ed.camino.length - 1] : null;
   if (P) {
     const dirs = [];
     for (const pl of pols) pl.pts.forEach((v, i) => {
@@ -2878,15 +3154,12 @@ function edEnganche(w, tolPx = 12){
       const a = pl.pts[(i - 1 + pl.pts.length) % pl.pts.length], b = pl.pts[(i + 1) % pl.pts.length];
       dirs.push([v[0] - a[0], v[1] - a[1]], [v[0] - b[0], v[1] - b[1]]);
     });
-    const largo = 1e4;
     for (const dv of dirs) {
       const n = Math.hypot(dv[0], dv[1]); if (!n) continue;
       const u = [dv[0] / n, dv[1] / n];
       const t = (w[0] - P[0]) * u[0] + (w[1] - P[1]) * u[1];
       if (t <= 0) continue;
       const q = [P[0] + u[0] * t, P[1] + u[1] * t];
-      const ray = [P, [P[0] + u[0] * largo, P[1] + u[1] * largo]];
-      // intersección del rayo con los bordes
       for (const pl of pols) { const vs = pl.pts; for (let i = 0; i < vs.length; i++) {
         if (vs[i][2]) continue;
         const a = vs[i], b = vs[(i + 1) % vs.length], den = u[0] * (b[1] - a[1]) - u[1] * (b[0] - a[0]);
@@ -2896,7 +3169,6 @@ function edEnganche(w, tolPx = 12){
       } }
       prop(q, 'Prolongación', 4, { ray: [P, q] });
     }
-    // perpendicular a un borde desde P
     for (const pl of pols) { const vs = pl.pts; for (let i = 0; i < vs.length; i++) {
       if (vs[i][2]) continue;
       const a = vs[i], b = vs[(i + 1) % vs.length], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
@@ -2910,17 +3182,27 @@ function edEnganche(w, tolPx = 12){
   if (!mejor) for (const pl of pols) { const vs = pl.pts; for (let i = 0; i < vs.length; i++) { const r = Editor.cercanoEnTramo(vs, i, w); prop(r.p, 'Cercano', 5); } }
   return mejor;
 }
-// posiciones (tramo, fracción) del punto p sobre los bordes de los polígonos de la planta
 function edSobreBorde(p){
   const out = [];
   for (const pl of edPolys()) {
     const vs = pl.pts;
     for (let i = 0; i < vs.length; i++) {
       const r = Editor.cercanoEnTramo(vs, i, p);
-      if (r.d < 1e-4) { out.push({ h: pl.h, i, t: r.t > 1 - 1e-7 ? 1 : r.t < 1e-7 ? 0 : r.t }); }
+      if (r.d < 1e-4) out.push({ h: pl.h, i, t: r.t > 1 - 1e-7 ? 1 : r.t < 1e-7 ? 0 : r.t });
     }
   }
   return out;
+}
+// vista previa del corte: superficies de las dos partes si se termina en el punto p
+function edPrevia(p){
+  const ed = state.ed; if (!ed.A) return null;
+  const borde = edSobreBorde(p).filter(b => ed.A.some(a => a.h === b.h));
+  for (const b of borde) {
+    const pl = ed.sup.find(s => s.h === b.h), a = ed.A.find(x => x.h === b.h);
+    if (!Editor.corteValido(pl.pts, ed.camino.concat([p]))) continue;
+    try { const [r1, r2] = Editor.dividir(pl.pts, a, b, ed.camino.slice(1)); return [Editor.area(r1), Editor.area(r2)]; } catch(e){}
+  }
+  return null;
 }
 
 /* --- eventos --- */
@@ -2928,33 +3210,50 @@ function edEventos(svg){
   let arrastre = null, movido = false;
   svg.addEventListener('wheel', ev => {
     ev.preventDefault();
-    const ed = state.ed, w = edMundo(ev), k = Math.exp(-ev.deltaY * 0.0015);
-    ed.view.s *= k; ed.view.cx = w[0] - (w[0] - ed.view.cx) / k; ed.view.cy = w[1] - (w[1] - ed.view.cy) / k;
+    const v = edView(), w = edMundo(ev), k = Math.exp(-ev.deltaY * 0.0015);
+    v.s *= k; v.cx = w[0] - (w[0] - v.cx) / k; v.cy = w[1] - (w[1] - v.cy) / k;
     edDibujar();
   }, { passive: false });
-  svg.addEventListener('pointerdown', ev => { arrastre = { x: ev.clientX, y: ev.clientY, cx: state.ed.view.cx, cy: state.ed.view.cy }; movido = false; svg.setPointerCapture(ev.pointerId); });
+  svg.addEventListener('pointerdown', ev => { ev.preventDefault(); svg.focus({ preventScroll: true }); const v = edView(); arrastre = { x: ev.clientX, y: ev.clientY, cx: v.cx, cy: v.cy }; movido = false; svg.setPointerCapture(ev.pointerId); });
   svg.addEventListener('pointermove', ev => {
-    const ed = state.ed;
+    const ed = state.ed, v = edView();
     if (arrastre && (Math.abs(ev.clientX - arrastre.x) + Math.abs(ev.clientY - arrastre.y) > 4)) {
       movido = true;
-      ed.view.cx = arrastre.cx - (ev.clientX - arrastre.x) / ed.view.s; ed.view.cy = arrastre.cy + (ev.clientY - arrastre.y) / ed.view.s;
+      v.cx = arrastre.cx - (ev.clientX - arrastre.x) / v.s; v.cy = arrastre.cy + (ev.clientY - arrastre.y) / v.s;
       edDibujar(); return;
     }
-    if (ed.herr === 'div') { ed.snap = edEnganche(edMundo(ev)); if (!ed.snap && ed.camino.length) ed.snap = { p: edMundo(ev), tipo: '' }; edDibujar(); }
+    if (ed.vista !== 'modelo') return;
+    if (ed.calcar && ed.calcar.paso % 2) { ed.snap = edEnganche(edMundo(ev), 12, true); edDibujar(); return; }
+    if (ed.herr === 'div') {
+      ed.snap = edEnganche(edMundo(ev)); if (!ed.snap && ed.camino.length) ed.snap = { p: edMundo(ev), tipo: '' };
+      if (ed.camino.length && ed.snap) {
+        const pr = edPrevia(ed.snap.p), falta = edFalta();
+        edHint(pr ? `Al terminar acá quedan ${f(pr[0])} m² y ${f(pr[1])} m². Para que cierre, lo declarado tiene que estar entre ${f(falta.dMin)} y ${f(falta.dMax)} m².` : undefined);
+      }
+      edDibujar();
+    }
   });
   svg.addEventListener('pointerup', ev => {
     const fue = movido; arrastre = null;
     if (fue) return;
     const ed = state.ed, w = edMundo(ev);
+    if (ed.vista !== 'modelo') return;
+    if (ed.calcar) { edCalcarClic(w); return; }
     if (ed.herr === 'sel') {
       const cand = edPolys().filter(p => Bloques.dentro(w, p.dib)).sort((a, b) => a.area - b.area)[0];
       ed.sel = cand ? cand.h : null; edDibujar(); edLateral(); return;
     }
     edClicCorte(ed.snap && ed.snap.tipo ? ed.snap.p : w);
   });
-  svg.addEventListener('keydown', ev => { if (ev.key === 'Escape') { edCancelar(); edHint(); edDibujar(); } });
+  svg.addEventListener('keydown', ev => { if (ev.key === 'Escape') { edCancelar(); if (state.ed.calcar) { state.ed.calcar = null; edObra(); } edHint(); edDibujar(); } });
   svg.addEventListener('contextmenu', ev => { ev.preventDefault(); edCancelar(); edHint(); edDibujar(); });
   new ResizeObserver(() => edDibujar()).observe(svg);
+}
+// rango de superficie declarada que hace cerrar el balance (sin contar lo ya marcado en otros polígonos)
+function edFalta(){
+  const ed = state.ed, s = edSugerencias();
+  const ya = [...ed.decl.keys()].reduce((a, h) => a + (ed.sup.find(p => p.h === h)?.area || 0), 0);
+  return { dMin: Math.max(s.dMin - ya, 0), dMax: Math.max(s.dMax - ya, 0) };
 }
 function edClicCorte(p){
   const ed = state.ed;
@@ -2963,20 +3262,17 @@ function edClicCorte(p){
     if (!borde.length) { edHint('El corte tiene que empezar sobre el borde de un polígono de la planta.'); return; }
     ed.camino = [p]; ed.A = borde; edHint(); edDibujar(); return;
   }
-  // ¿termina sobre el borde del mismo polígono?
   const comunes = borde.filter(b => ed.A.some(a => a.h === b.h));
   if (comunes.length && Math.hypot(p[0] - ed.camino[0][0], p[1] - ed.camino[0][1]) > 1e-4) {
     for (const b of comunes) {
       const pl = ed.sup.find(s => s.h === b.h), a = ed.A.find(x => x.h === b.h);
-      const camino = ed.camino.concat([p]);
-      if (!Editor.corteValido(pl.pts, camino)) continue;
+      if (!Editor.corteValido(pl.pts, ed.camino.concat([p]))) continue;
       edAplicarCorte(pl, a, b, ed.camino.slice(1));
       return;
     }
     edHint('Ese corte sale del polígono o lo cruza: tiene que ir por dentro, de borde a borde.');
     return;
   }
-  // punto intermedio: tiene que quedar dentro de alguno de los polígonos de partida
   if (!ed.A.some(a => Bloques.dentro(p, ed.sup.find(s => s.h === a.h).dib))) { edHint('Los puntos intermedios tienen que quedar dentro del polígono que se divide.'); return; }
   ed.camino.push(p); edDibujar();
 }
@@ -2986,7 +3282,6 @@ function edAplicarCorte(pl, A, B, medio){
     const [r1, r2] = Editor.dividir(pl.pts, A, B, medio);
     const a1 = Editor.area(r1), a2 = Editor.area(r2);
     if (Math.abs(a1 + a2 - pl.area) > 0.005) throw new Error('las partes no suman la superficie original');
-    // la parte nueva (que queda seleccionada) es la que más se acerca a lo que falta declarar
     const yaDecl = [...ed.decl.keys()].filter(h => h !== pl.h).reduce((a, h) => a + (ed.sup.find(s => s.h === h)?.area || 0), 0);
     const falta = Math.max(ed.alta - yaDecl, 0);
     const [queda, nueva] = Math.abs(a1 - falta) <= Math.abs(a2 - falta) ? [r2, r1] : [r1, r2];
@@ -3004,6 +3299,14 @@ function edDeshacer(){
   const ed = state.ed, u = ed.undo.pop();
   if (!u) { edHint('No hay cambios para deshacer.'); return; }
   edCargar(u.txt); ed.decl = u.decl; ed.sel = null; edCancelar(); edDibujar(); edLateral(); edHint('Se deshizo el último cambio.');
+}
+function edMarcar(hs){
+  const ed = state.ed;
+  ed.decl.clear();
+  hs.forEach(h => ed.decl.set(h, { tipo: ed.tipoDef, nform: ed.nformDef }));
+  ed.sel = hs[0] || null;
+  const p = ed.sup.find(s => s.h === ed.sel); if (p) ed.planta = p.planta;
+  edTabs(); edDibujar(); edLateral();
 }
 
 /* --- panel lateral --- */
@@ -3035,6 +3338,15 @@ function edLateral(){
     <div class="ed-s">AGIP + declarado: ${f(nuevoAgip)} m² · relevado ${f(ed.constr)} m² · diferencia ${f(pct)} % (TS ${ts} %)</div>
     <div class="pill ${cierra ? 'ok' : 'warn'}">${!decl.length ? 'Todavía no marcaste polígonos' : cierra ? 'Cierra dentro de la tolerancia' : 'No cierra: revisá los polígonos marcados'}</div>
     ${decl.length ? `<ol class="ed-list">${decl.map((x, i) => `<li><button type="button" data-h="${x.p.h}">Polígono ${i + 1}</button> · ${f(x.p.area)} m² · ${Engine.NOMBRE_PLANTA(x.p.planta)} · form ${esc(x.d.tipo || '¿?')}/${esc(x.d.nform || '¿?')}</li>`).join('')}</ol>` : ''}
+  </div>`;
+  // sugerencias
+  const S = edSugerencias();
+  const uc = (state.cert?.unidades || []).map(u => `${f(u.sup)} m²${u.antig ? ' (' + esc(u.antig) + ')' : ''}${u.destino ? ' · ' + esc(u.destino.toLowerCase()) : ''}`);
+  html += `<div class="ed-card"><div class="ed-k">Sugerencias según el certificado</div>
+    ${uc.length ? `<div class="ed-s"><b>Empadronado en AGIP:</b> ${uc.join(' · ')} = ${f(ed.agip)} m².</div>` : ''}
+    <div class="ed-s">Para que cierre, lo declarado tiene que sumar <b>entre ${f(S.dMin)} y ${f(S.dMax)} m²</b> (TS ${S.ts} %).</div>
+    ${S.combos.length ? `<div class="ed-s">Polígonos que ya cumplen:</div><ul class="ed-sug">${S.combos.map((c, i) => `<li><span>${c.sel.map(q => `${f(q.area)} m² (${Engine.NOMBRE_PLANTA(q.planta)})`).join(' + ')}${c.sel.length > 1 ? ' = ' + f(c.sum) + ' m²' : ''}</span><button type="button" class="tb" data-i="${i}">Marcar</button></li>`).join('')}</ul>`
+      : `<div class="ed-s">Ningún polígono ni combinación de polígonos llega a ese rango: el sector nuevo está dentro de uno más grande.${S.contener.length ? ` Probablemente en ${S.contener.map(q => `<button type="button" class="lnk" data-h="${q.h}">${f(q.area)} m² (${Engine.NOMBRE_PLANTA(q.planta)})</button>`).join(' o ')}: dividilo con <b>Dividir polígono</b> comparando con el plano de obra.` : ''}</div>`}
   </div>
   <div class="ed-card"><button class="btn" id="bDxfAlta" type="button" ${!decl.length || faltaTipo ? 'disabled' : ''}>Descargar DXF completado</button>
     <div class="ed-s" id="dxfStatus">${!decl.length ? 'Marcá al menos un polígono a declarar.' : faltaTipo ? 'Completá el tipo y el número de formulario de cada polígono.' : 'Formato AutoCAD 2010 DXF. El resto del archivo queda igual.'}</div></div>`;
@@ -3043,7 +3355,9 @@ function edLateral(){
   if (chk) chk.onchange = () => { if (chk.checked) ed.decl.set(p.h, { tipo: ed.tipoDef, nform: ed.nformDef }); else ed.decl.delete(p.h); edDibujar(); edLateral(); };
   if ($('edTipo')) $('edTipo').onchange = e => { ed.decl.get(p.h).tipo = ed.tipoDef = e.target.value; edLateral(); };
   if ($('edNform')) $('edNform').onchange = e => { ed.decl.get(p.h).nform = ed.nformDef = e.target.value.trim(); edLateral(); };
-  side.querySelectorAll('.ed-list button').forEach(b => b.onclick = () => { const q = ed.sup.find(s => s.h === b.dataset.h); ed.planta = q.planta; ed.sel = q.h; edTabs(); edDibujar(); edLateral(); });
+  const ir = h => { const q = ed.sup.find(s => s.h === h); if (!q) return; if (ed.vista !== 'modelo') edVista('modelo'); ed.planta = q.planta; ed.sel = q.h; edTabs(); edDibujar(); edLateral(); };
+  side.querySelectorAll('.ed-list button, .ed-card .lnk').forEach(b => b.onclick = () => ir(b.dataset.h));
+  side.querySelectorAll('.ed-sug button').forEach(b => b.onclick = () => edMarcar(S.combos[+b.dataset.i].sel.map(q => q.h)));
   if ($('bDxfAlta')) $('bDxfAlta').onclick = descargarDxfAlta;
 }
 async function descargarDxfAlta(){
