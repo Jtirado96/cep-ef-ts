@@ -2562,7 +2562,7 @@ const Ficha = (() => {
       if (sec === 'TABLES' && v === 'ENDTAB' && r.tabla === 'BLOCK_RECORD') r.brFin = i;
       if (sec === 'TABLES' && v === 'BLOCK_RECORD' && val(2)) (r.brNombres ||= []).push(val(2));
       if (sec === 'TABLES' && v === 'DIMSTYLE' && val(2)) (r.dimstyles ||= []).push({ ini: i, nombre: val(2), h: val(105) });
-      if (sec === 'TABLES' && v === 'LAYER' && val(2)) (r.capas ||= []).push(val(2).toUpperCase());
+      if (sec === 'TABLES' && v === 'LAYER' && val(2)) { (r.capas ||= []).push(val(2).toUpperCase()); (r.capaH ||= {})[val(2).toUpperCase()] = val(5); }
       if (sec === 'BLOCKS' && v === 'ENDBLK') r.finBlk = k;
       if (sec && sec !== 'HEADER' && v !== 'SECTION') (r.todos ||= []).push({ ini: i, fin: k, g, tipo: v.trim() });
       if (sec === 'ENTITIES') {
@@ -2570,7 +2570,16 @@ const Ficha = (() => {
         r.ents.push(e);
         if (e.tipo === 'INSERT' && !e.papel && /PARCELA_SURGENTE/i.test(val(2) || '')) r.nparc = [+val(10), +val(20)];
         if ((e.tipo === 'TEXT' || e.tipo === 'MTEXT' || e.tipo === 'INSERT') && !e.papel && /PUERTA/i.test(e.capa)) (r.puertas ||= []).push([+val(10), +val(20)]);
-        if ((e.tipo === 'TEXT' || e.tipo === 'MTEXT') && !e.papel && /CALLE/i.test(e.capa)) (r.calles ||= []).push([+val(10), +val(20)]);
+        if ((e.tipo === 'TEXT' || e.tipo === 'MTEXT') && !e.papel && /CALLE/i.test(e.capa)) {
+          const p = [+val(10), +val(20)]; p.nombre = (val(1) || '').replace(/\\[A-Za-z][^;]*;|[{}]/g, '').trim().toUpperCase();
+          (r.calles ||= []).push(p);
+        }
+        // contorno de la manzana dibujado en el DXF (respaldo si Ciudad 3D no la devuelve)
+        if (e.tipo === 'LWPOLYLINE' && !e.papel && /MANZANA/i.test(e.capa)) {
+          const xs = g.filter(([x]) => x === 10).map(([, v]) => +v), ys = g.filter(([x]) => x === 20).map(([, v]) => +v);
+          const an = xs.map((x, k) => [x, ys[k]]);
+          if (an.length >= 3 && (!r.manzanaDxf || Math.abs(area2(an)) > Math.abs(area2(r.manzanaDxf)))) r.manzanaDxf = an;
+        }
       }
     }
     // ATTRIB / VERTEX / SEQEND acompañan a la entidad anterior
@@ -2600,7 +2609,8 @@ const Ficha = (() => {
     const afuera = (i) => { const e = uni(sub(par[(i + 1) % n], par[i])); return [-e[1], e[0]]; }; // normal exterior (anillo horario)
 
     // frente: lados que están sobre la línea de la manzana
-    let frente = d.manzana ? par.map((p, i) => distAnillo(mul(add(p, par[(i + 1) % n]), .5), d.manzana) < 2) : par.map(() => false);
+    const manz = d.manzana ? limpiarAnillo(d.manzana) : r.manzanaDxf ? limpiarAnillo(r.manzanaDxf) : null;
+    let frente = manz ? par.map((p, i) => distAnillo(mul(add(p, par[(i + 1) % n]), .5), manz) < 2) : par.map(() => false);
     const ref = (r.puertas && r.puertas.length) ? r.puertas : r.calles;
     if (!frente.some(Boolean) && ref && ref.length) {
       // sin datos de la manzana: el frente es el lado más cercano al número de puerta (o al nombre de la calle)
@@ -2609,6 +2619,26 @@ const Ficha = (() => {
       frente = par.map((_, i) => i === best);
     }
     if (!frente.some(Boolean)) frente = par.map((_, i) => i === 0);
+    // ochava: lado corto entre dos lados de frente que doblan (puede quedar lejos de una manzana sin ochava dibujada)
+    const dirLado = i => uni(sub(par[(i + 1) % n], par[i]));
+    for (let i = 0; i < n; i++) {
+      const a = (i - 1 + n) % n, b = (i + 1) % n;
+      if (!frente[i] && frente[a] && frente[b] && len(sub(par[b], par[i])) < 12 && Math.abs(dirLado(a)[0] * dirLado(b)[0] + dirLado(a)[1] * dirLado(b)[1]) < Math.cos(20 * Math.PI / 180)) frente[i] = true;
+    }
+    // parcela en esquina: el frente da a dos calles distintas (doble nombre de calle), el frente dobla
+    // o llega a un vértice de la manzana. En ese caso no se acota la distancia a la esquina ni se marcan
+    // las L.E. de los catetos de la ochava.
+    const calleDe = i => {
+      let best = null, dm = 40;
+      for (const c of r.calles || []) { if (!c.nombre) continue; const dd = distSeg(c, par[i], par[(i + 1) % n]); if (dd < dm) { dm = dd; best = c.nombre; } }
+      return best;
+    };
+    const idxFrente = Array.from({ length: n }, (_, k) => k).filter(i => frente[i]);
+    const nombresFrente = new Set(idxFrente.map(calleDe).filter(Boolean));
+    const dirsFrente = idxFrente.map(dirLado);
+    const esquina = nombresFrente.size >= 2
+      || dirsFrente.some(a => dirsFrente.some(b => Math.abs(a[0] * b[0] + a[1] * b[1]) < Math.cos(20 * Math.PI / 180)))
+      || (!!d.manzana && par.some((p, j) => (frente[j] || frente[(j - 1 + n) % n]) && limpiarAnillo(d.manzana).some(W => len(sub(W, p)) < 2)));
     // A = primer vértice de la cadena de frente (en sentido horario)
     let iA = frente.findIndex((f, i) => f && !frente[(i - 1 + n) % n]);
     if (iA < 0) iA = 0;
@@ -2761,11 +2791,15 @@ const Ficha = (() => {
     }
     // marcas de los linderos que llegan a cada vértice, y línea de edificación con la distancia a la esquina
     const largo = 0.017;
-    // parcela en esquina: el frente dobla (lados de frente con direcciones distintas) o llega a un vértice de la manzana.
-    // En ese caso no se acota la distancia a la esquina.
-    const dirsFrente = orden.filter(j => frente[j]).map(j => uni(sub(par[(j + 1) % n], par[j])));
-    const esquina = dirsFrente.some(a => dirsFrente.some(b => Math.abs(a[0] * b[0] + a[1] * b[1]) < Math.cos(20 * Math.PI / 180)))
-      || (!!d.manzana && par.some((p, j) => (frente[j] || frente[(j - 1 + n) % n]) && limpiarAnillo(d.manzana).some(W => len(sub(W, p)) < 2)));
+    // esquina teórica: cruce de las líneas de frente de las dos calles (los catetos de la ochava llegan ahí)
+    let Xesq = null;
+    if (esquina) {
+      const cad = orden.filter(j => frente[j]);
+      const i1 = cad[0], i2 = cad[cad.length - 1], u1 = dirLado(i1), u2 = dirLado(i2);
+      const den = u1[0] * u2[1] - u1[1] * u2[0];
+      if (Math.abs(den) > 0.2) { const w = sub(par[i2], par[i1]), t = (w[0] * u2[1] - w[1] * u2[0]) / den; Xesq = add(par[i1], mul(u1, t)); }
+    }
+    const haciaEsquina = (V, u) => { if (!Xesq) return false; const w = sub(Xesq, V), t = w[0] * u[0] + w[1] * u[1]; return t > 0.05 && Math.abs(w[0] * u[1] - w[1] * u[0]) < 0.5 && t < 30; };
     const marcas = [];
     const dirFrente = [];
     orden.forEach(i => {
@@ -2796,6 +2830,7 @@ const Ficha = (() => {
       const unicas = [];
       for (const u of dirs) if (!unicas.some(w => w[0] * u[0] + w[1] * u[1] > Math.cos(4 * Math.PI / 180))) unicas.push(u);
       for (const u of unicas) {
+        if (haciaEsquina(V, u)) continue; // cateto de la ochava
         const a = T(V), b = add(a, mul(u, largo));
         linea(CAPA_CAR, 256, a, b);
         // ¿es la prolongación del frente? → L.E. y distancia a la esquina
@@ -2890,10 +2925,17 @@ const Ficha = (() => {
       cambios.push([o.ini, o.fin, out2]);
     }
     // ventana: centro y altura de vista
+    // capas apagadas en la ventana de la ficha: superficies (todas las plantas; las de planta baja se dibujan en el papel),
+    // título y muros separativos de parcela
+    const congeladas = new Set(vp.g.filter(([c]) => c === 331).map(([, v]) => v.trim()));
+    const congelar = Object.entries(r.capaH || {}).filter(([nm, hh]) => hh && !congeladas.has(hh) && (/SUP$/.test(nm) || /TITULO/.test(nm) || /MURO.*SEPARATIVO/.test(nm))).map(([, hh]) => hh);
+    let enVp = false, puestas = false;
     {
       const out = [];
       for (let k = vp.ini; k < vp.fin; k += 2) {
         const c = parseInt(L[k], 10);
+        if (c === 90 && enVp && !puestas) { out.push(...congelar.flatMap(hh => ['331', hh])); puestas = true; }
+        if (c === 100 && L[k + 1].trim() === 'AcDbViewport') enVp = true;
         if (c === 12) out.push(L[k], fmt(vc[0])); else if (c === 22) out.push(L[k], fmt(vc[1])); else if (c === 45) out.push(L[k], fmt(ph * N)); else out.push(L[k], L[k + 1]);
       }
       cambios.push([vp.ini, vp.fin, out]);
@@ -2915,7 +2957,7 @@ const Ficha = (() => {
     }
     cambios.sort((a, b) => b[0] - a[0]).forEach(([i, f, nuevas]) => out.splice(i, f - i, ...nuevas));
     if (r.seedLinea != null) out[r.seedLinea] = h.toString(16).toUpperCase();
-    return { txt: out.join(r.eol), info: { escala: N, lados, vecinos: vecinosOut, distancias: dirFrente, esquina, superficies: supOut, borrados: borrar.length } };
+    return { txt: out.join(r.eol), info: { capasApagadas: congelar.length, escala: N, lados, vecinos: vecinosOut, distancias: dirFrente, esquina, superficies: supOut, borrados: borrar.length } };
   }
 
   // Nº de expediente en la ficha: reemplaza el texto EX-… del layout o lo agrega arriba a la izquierda
@@ -3889,7 +3931,7 @@ function edCardFicha(){
   const online = ENTORNO === 'web' || ENTORNO === 'demo';
   const smp = state.c3d?.res?.smp;
   return `<div class="ed-card"><div class="ed-k">Ficha parcelaria automática</div>
-    <div class="ed-s">Consulta en Ciudad 3D la manzana y las parcelas linderas y arma en el layout: contorno de la parcela, superficies de planta baja según el RT 19.4.4 (cubiertas con rayado a 45° de la L.O., semicubiertas con doble línea cruzada, descubiertas sin rayado, precarias con rayado a 90°, todas acotadas), letras y medidas de los lados, números de las parcelas linderas, prolongación de los linderos, línea de edificación con la distancia a cada esquina, y la escala de la ventana.</div>
+    <div class="ed-s">Consulta en Ciudad 3D la manzana y las parcelas linderas y arma en el layout: contorno de la parcela, superficies de planta baja según el RT 19.4.4 (cubiertas con rayado a 45° de la L.O., semicubiertas con doble línea cruzada, descubiertas sin rayado, precarias con rayado a 90°), letras y cotas de los lados, números de las parcelas linderas, prolongación de los linderos, línea de edificación con la distancia a cada esquina (no en parcelas de esquina) y la escala de la ventana. En la ventana quedan apagadas las capas de superficies, título y muros separativos.</div>
     <button type="button" class="tb" id="edFicha" ${online && smp ? '' : 'disabled'}>${I ? 'Volver a armar la ficha' : 'Armar ficha con Ciudad 3D'}</button>
     <div class="ed-s" id="edFichaSt">${!online ? 'Disponible en la versión publicada de la página (necesita consultar Ciudad 3D).' : !smp ? 'Primero la parcela tiene que encontrarse en Ciudad 3D (paso 2).' : I ? '' : 'Si el layout ya tiene una ficha dibujada, se reemplazan el contorno, las medidas y los linderos; el norte, el número de expediente y el recuadro quedan como están.'}</div>
     <label class="ed-f">Nº de expediente (arriba a la izquierda)<input id="edExp" value="${esc(ed.expediente ?? Ficha.expedienteActual(ed.txt))}" placeholder="EX-2026-12345678- -GCABA-DGROC" autocomplete="off"></label>
@@ -3897,23 +3939,12 @@ function edCardFicha(){
       <div class="ed-s">Revisá la ficha en el visor antes de descargar. Con <b>Deshacer</b> (en la pestaña Plano) volvés a la ficha anterior.</div>` : ''}
   </div>`;
 }
-// Superficies que se dibujan en la ficha (RT 19.4.4): las de planta baja y las de la planta inmediata superior
-// que se proyectan fuera de lo construido en planta baja, dentro de la parcela
+// Superficies que se dibujan en la ficha: solo las de planta baja (las de los otros pisos no van)
 const TIPO_FICHA = c => [1, 30, 104].includes(c) ? 'cubierta' : [2, 4].includes(c) ? 'semicubierta' : [3, 5, 204].includes(c) ? 'descubierta' : c === 52 ? 'precaria' : null;
 function edSuperficiesFicha(par){
-  const ed = state.ed, ctr = q => [q.reduce((a, p) => a + p[0], 0) / q.length, q.reduce((a, p) => a + p[1], 0) / q.length];
-  const pb = ed.sup.filter(p => p.planta === 'PB' && TIPO_FICHA(p.color));
-  const construidoPB = pb.filter(p => TIPO_FICHA(p.color) !== 'descubierta');
-  const sup = ed.plantas.filter(x => /^\d{2}P$/.test(x)).sort()[0];
-  const proy = [], fuera = [];
-  if (sup) for (const p of ed.sup.filter(q => q.planta === sup && TIPO_FICHA(q.color))) {
-    const c = ctr(p.dib);
-    if (construidoPB.some(q => Bloques.dentro(c, q.dib))) continue;
-    if (!Bloques.dentro(c, par.map(v => [v[0], v[1]]))) { fuera.push(p); continue; }
-    proy.push(p);
-  }
-  ed.fichaFuera = fuera;
-  return pb.concat(proy).map(p => ({ tipo: TIPO_FICHA(p.color), anillo: p.dib, verts: p.pts }));
+  const ed = state.ed;
+  ed.fichaFuera = [];
+  return ed.sup.filter(p => p.planta === 'PB' && TIPO_FICHA(p.color)).map(p => ({ tipo: TIPO_FICHA(p.color), anillo: p.dib, verts: p.pts }));
 }
 async function edFicha(){
   const ed = state.ed, st = () => $('edFichaSt');
